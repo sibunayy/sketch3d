@@ -802,6 +802,11 @@ img.ic{display:block;flex:none;pointer-events:none;-webkit-user-drag:none;user-s
 .vchome{width:34px;height:30px;right:-6px;bottom:-32px}.vchome img.ic{height:24px;width:auto}
 .seg button img.ic{height:22px;width:auto;margin-right:2px}
 #vMenuBtn img.ic{height:20px;width:auto;margin-right:4px}
+
+/* ---- 3D gizmo: no toolbar, a tip while dragging ---- */
+html body .app .v3dtools,html body .app[data-mode] .v3dtools{display:none!important}
+.giztip{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:9;background:var(--ink);color:#fff;font:600 13px var(--font-ui);padding:4px 12px;border-radius:999px;pointer-events:none;white-space:nowrap}
+.giztip[hidden]{display:none}
 </style>
 
 <div class="app" id="app" data-mode="draw" data-view="front">
@@ -1282,6 +1287,24 @@ function zoomAt(f,px,py){const fs=fitScale(),s=clamp(V.s*f,fs*.6,fs*6),wx=(px-V.
 const toW=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left-V.ox)/V.s,-(e.clientY-r.top-V.oy)/V.s]};
 const sn=w=>snapOn?[Math.round(w[0]),Math.round(w[1])]:w;
 function inPoly(p,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+/* ----- the real 3D shape, seen from the front and the side (after sculpting, turning and rounding) ----- */
+let ghost=null,ghostFor=null,ghostT=0,ghostTm=0;
+function ghostBuild(){const M=curM;if(!M||!M.idx||!M.idx.length){ghost=null;ghostFor=null;return null}
+ if(ghost&&ghostFor===M)return ghost;
+ const now=performance.now();if(ghost&&now-ghostT<380){if(!ghostTm)ghostTm=setTimeout(()=>{ghostTm=0;requestRender(true,false)},400);return ghost}
+ const P=M.pos,I=M.idx,PX=(typeof LOWPERF!=='undefined'&&LOWPERF)?3:4.5,x0=-(limits.w+24)/2,z0=-(limits.d+24)/2,y0=-4,y1=limits.h+8;
+ const tri=(wmm,fu)=>{const c=document.createElement('canvas');c.width=Math.ceil(wmm*PX);c.height=Math.ceil((y1-y0)*PX);const g=c.getContext('2d');g.fillStyle='#000';g.beginPath();
+  for(let t=0;t<I.length;t+=3){const a=I[t]*3,b=I[t+1]*3,d=I[t+2]*3;let ax=fu(P[a],P[a+2])*PX,ay=(y1-P[a+1])*PX,bx=fu(P[b],P[b+2])*PX,by=(y1-P[b+1])*PX,dx=fu(P[d],P[d+2])*PX,dy=(y1-P[d+1])*PX;
+   if((bx-ax)*(dy-ay)-(by-ay)*(dx-ax)<0){const tx=bx,ty=by;bx=dx;by=dy;dx=tx;dy=ty}g.moveTo(ax,ay);g.lineTo(bx,by);g.lineTo(dx,dy);g.closePath()}
+  g.fill();const w=c.width,h=c.height,im=g.getImageData(0,0,w,h),A=im.data,o=g.createImageData(w,h),O=o.data;
+  for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=(y*w+x)*4+3;if(A[i]>127&&(A[i-4]<128||A[i+4]<128||A[i-w*4]<128||A[i+w*4]<128)){const j=i-3;O[j]=214;O[j+1]=51;O[j+2]=108;O[j+3]=255}}
+  const e=document.createElement('canvas');e.width=w;e.height=h;e.getContext('2d').putImageData(o,0,0);return e};
+ ghost={front:{c:tri(limits.w+24,(x,z)=>x-x0),x0,x1:-x0,y0,y1},side:{c:tri(limits.d+24,(x,z)=>z-z0),z0,z1:-z0,y0,y1}};ghostFor=M;ghostT=now;return ghost}
+function ghostDraw(x,view){const G=ghostBuild();if(!G)return;const g=G[view];x.save();x.globalAlpha=.85;x.imageSmoothingEnabled=true;try{x.imageSmoothingQuality='high'}catch(e){}
+ if(view==='front'){x.translate(V.ox+g.x0*V.s,V.oy-g.y1*V.s);x.scale(V.s*(g.x1-g.x0)/g.c.width,V.s*(g.y1-g.y0)/g.c.height)}
+ else{const xa=zToX(g.z0),xb=zToX(g.z1),yt=yToS(g.y1),yb=yToS(g.y0);x.translate(xa,yt);x.scale((xb-xa)/g.c.width,(yb-yt)/g.c.height)}
+ x.drawImage(g.c,0,0);x.restore();
+ x.save();x.font='600 11px DM Sans,system-ui,sans-serif';x.textBaseline='middle';x.lineJoin='round';x.lineWidth=3;x.strokeStyle='rgba(255,255,255,.85)';x.fillStyle='#d6336c';x.beginPath();x.arc(14,76,4,0,7);x.fill();const tx='Pink line = the real 3D shape';x.strokeText(tx,24,76);x.fillStyle=css('--ink')||'#222';x.fillText(tx,24,76);x.restore()}
 /* front-view stacking: a small part sitting on a bigger part's surface (eyes on a face) draws on top of it */
 function drawOrder2D(){const L=parts.slice(),key=new Map();for(const p of L){let k=frontOf(p);if(!p.cut){const b=bbox(p.pts);for(const q of L){if(q===p||q.cut)continue;const fq=frontOf(q);if(fq<=k)continue;const bq=bbox(q.pts);if(b.w*b.h>=bq.w*bq.h||b.cx<bq.x0||b.cx>bq.x1||b.cy<bq.y0||b.cy>bq.y1)continue;let s=null;try{s=surfZ(q,b.cx,b.cy)}catch(e){}if(s!==null&&frontOf(p)>=s-1)k=Math.max(k,fq+.01)}}key.set(p,k)}return L.sort((a,b)=>key.get(a)-key.get(b))}
 function hitsAt(w){const o=drawOrder2D(),r=[];for(let i=o.length-1;i>=0;i--)if(inPoly(w,o[i].pts))r.push(o[i].id);return r}
@@ -1318,6 +1341,7 @@ function draw2d(){if(view2d==='side'){drawSide();return}clampView();const x=cx,T
  if(!SL){x.save();x.lineWidth=1.3;x.strokeStyle='rgba(29,27,58,.6)';for(const p of ORD){if(p.cut||p.id===sel)continue;path(p.pts);x.stroke()}x.restore()}
  drawRef(x,'front','over');
  if(grooves.length){x.save();x.lineCap='round';x.lineJoin='round';x.strokeStyle='rgba(15,118,110,.9)';x.lineWidth=Math.max(2,3.6*V.s);x.globalAlpha=.55;for(const g of grooves){for(const sg of (g.sym?[1,-1]:[1])){x.beginPath();g.pts.forEach((q,i)=>{const sx=V.ox+q[0]*sg*V.s,sy=V.oy-q[1]*V.s;i?x.lineTo(sx,sy):x.moveTo(sx,sy)});x.stroke()}}x.restore()}
+ ghostDraw(x,'front');
  const sp=sel&&partById(sel);
  if(sp){if(symOn&&sp.twin){const tw=partById(sp.twin);if(tw){path(tw.pts);x.strokeStyle=T.ac;x.lineWidth=1.5;x.setLineDash([3,4]);x.stroke();x.setLineDash([])}}path(sp.pts);x.strokeStyle=T.ac;x.lineWidth=2.5;x.stroke();const b=bbox(sp.pts),l=V.ox+b.x0*V.s,t=V.oy-b.y1*V.s,w=b.w*V.s,h=b.h*V.s;
   x.strokeStyle=T.ac;x.lineWidth=1;x.setLineDash([4,4]);x.strokeRect(l+.5,t+.5,w,h);x.setLineDash([]);
@@ -1418,6 +1442,7 @@ addEventListener('keydown',e=>{const t=e.target,tg=t&&t.tagName;if(tg==='TEXTARE
  if(k===' '){if(t===document.body||t===cv){e.preventDefault();spaceDown=true;cv.style.cursor='grab'}return}
  const map={g:'crease',v:'select',p:'draw',l:'limb',c:'circle',r:'box',s:'star',h:'heart',q:'erase',y:'eyes',j:'smile',e:'egg',k:'capsule',t:'triangle',d:'drop',m:'moon',o:'holeC',x:'holeB'};if(map[k]){if(document.getElementById('app').classList.contains('sculpting'))return;setTool(map[k]);return}
  if((k==='delete'||k==='backspace')&&sel){e.preventDefault();delSel();return}
+ if(k==='f'&&sel&&typeof focusSel==='function'){e.preventDefault();focusSel();return}
  if(k==='escape'){$('#sheet').hidden=true;if(sel)select(null);else setTool('select');return}
  if(sel&&(k.startsWith('arrow')||k==='pageup'||k==='pagedown')){e.preventDefault();const st=e.shiftKey?5:1,h=k==='arrowleft'?-st:k==='arrowright'?st:0,v=k==='arrowup'?st:k==='arrowdown'?-st:0,f=k==='pageup'?st:k==='pagedown'?-st:0;
   if(view2d==='side')nudge(0,v,-h+f);else nudge(h,v,f)}});
@@ -1526,6 +1551,16 @@ function finishLimb(d){const raw=dedupeE(d.pts,.3);if(raw.length<3||perim(raw)<8
  const pts=limbFinish(limbOutline(L,L.a));if(pts.length<3||Math.abs(area(pts))<2){toast('That line was too short. Try again.');return}
  const nb=bbox(pts);L.c=[nb.cx,nb.cy];
  const p=addPart(pts,'limb',{depth:Math.round(r0*2.2),round:.9,blend:3});p.limb=L;afterCreate(p)}
+/* tail or arm drawn from the side: a rod along the path, its side shape taken from the stroke */
+function finishLimbSide(d){const raw=dedupeE(d.pts,.3);if(raw.length<3||perim(raw)<8){toast('Drag a longer line to make a tail or arm.');return}
+ const sp0=resampleOpen(smoothOpen(resampleOpen(raw,24),3),14);
+ let total=0;for(let i=1;i<sp0.length;i++)total+=Math.hypot(sp0[i][0]-sp0[i-1][0],sp0[i][1]-sp0[i-1][1]);
+ const r0=clamp(total*.12,2.5,10),L={sp:sp0.map(q=>[q[0]-sp0[0][0],q[1]-sp0[0][1]]),r0,r1:Math.max(1.2,r0*.45),bend:0,a:[sp0[0][0],sp0[0][1]],c:[0,0]};
+ const loop=limbFinish(limbOutline(L,L.a));if(loop.length<3||Math.abs(area(loop))<2){toast('That line was too short. Try again.');return}
+ const lb=bbox(loop),rx=Math.max(1.5,(r0+L.r1)/2),pts=SHAPES.circle(-rx,lb.y0,rx,Math.max(lb.y1,lb.y0+2*rx));
+ const p=addPart(pts,'limb',{depth:Math.max(4,Math.round(lb.w)),round:.9,blend:3,z:Math.round(lb.cx*10)/10});
+ const pr=profFromLoop(p,loop);if(pr){p.prof=pr;tidyProf(p)}
+ afterCreate(p)}
 /* ===== print scale lock + teacher settings ===== */
 let teach={lock:true,min:30,max:100,pin:'1234',size:1},teachOpen=false,pcPieces=[],saveWarned=false;
 try{const t=JSON.parse(localStorage.getItem('sketch3d.teach')||'null');if(t)teach=Object.assign(teach,t)}catch(e){}
@@ -1633,13 +1668,14 @@ function drawSide(){clampView();const x=cxS,T={cv:css('--cv'),gm:css('--gridm'),
  for(const p of drawOrder()){if(p.id===sel)continue;if(SL&&!p.cut)continue;path(profPoly(p));if(p.cut){x.fillStyle='rgba(229,72,77,.15)';x.fill();x.setLineDash([5,4]);x.strokeStyle='#e5484d'}else{x.fillStyle=p.color;x.globalAlpha=sp?.28:.7;x.fill();x.globalAlpha=1;x.strokeStyle='rgba(0,0,0,.3)'}x.lineWidth=1.2;x.stroke();x.setLineDash([])}
  x.save();x.lineWidth=1.3;x.strokeStyle='rgba(29,27,58,.6)';for(const p of drawOrder()){if(p.cut||p.id===sel||(SL&&!p.cut))continue;path(profPoly(p));x.stroke()}x.restore();
  drawRef(x,'side','over');
+ ghostDraw(x,'side');
  {const mi=selIds();if(mi.length>1)for(const i of mi){if(i===sel)continue;const q=partById(i);if(!q)continue;path(profPoly(q));x.strokeStyle=T.ac;x.lineWidth=3;x.stroke()}}
  if(sp){path(profPoly(sp));if(!SL||sp.cut){x.fillStyle=sp.cut?'rgba(229,72,77,.25)':sp.color;x.globalAlpha=.95;x.fill();x.globalAlpha=1}if(!SL||sp.cut||sp.prof){x.strokeStyle=T.ac;x.lineWidth=3;x.stroke()}
   if(sideTool==='edit'&&sideHover&&sideHover.id===sp.id){x.beginPath();x.arc(sideHover.x,sideHover.y,sideHover.r,0,7);x.fillStyle='rgba(37,99,235,.13)';x.fill();x.strokeStyle='#2563eb';x.lineWidth=1.5;x.setLineDash([4,4]);x.stroke();x.setLineDash([])}
   if(sideTool==='edit'&&!sp.cut&&!(sdrag&&sdrag.type==='draw')){const hs=sideHandlesOf(sp),mid=(SN-1)/2;for(const sd of['f','b']){let hb=null;for(const h of hs)if(h.s===sd&&(!hb||Math.abs(h.i-mid)<Math.abs(hb.i-mid)))hb=h;if(!hb)continue;const r=touchMode?22:17,dir=sd==='f'?-1:1;x.beginPath();x.arc(hb.x,hb.y,r,0,7);x.fillStyle=T.pn;x.fill();if(!SL||sp.cut||sp.prof){x.strokeStyle=T.ac;x.lineWidth=3;x.stroke()}x.beginPath();x.moveTo(hb.x-6,hb.y-6);x.lineTo(hb.x-12,hb.y);x.lineTo(hb.x-6,hb.y+6);x.moveTo(hb.x+6,hb.y-6);x.lineTo(hb.x+12,hb.y);x.lineTo(hb.x+6,hb.y+6);x.lineWidth=2.5;x.lineCap='round';x.lineJoin='round';x.stroke();x.lineCap='butt'}}
   if(sideTool==='edit'&&sideShowDots)for(const h of sideHandlesOf(sp)){const r=touchMode?11:6.5;x.beginPath();x.arc(h.x,h.y,r,0,7);x.fillStyle=T.pn;x.fill();x.strokeStyle=T.ac;x.lineWidth=2.5;x.stroke()}}
  else{x.fillStyle=T.mute;x.font='600 16px Geist,DM Sans,system-ui,sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('Tap a part to shape its side',cw/2,ch/2);x.textAlign='left'}
- if(sdrag&&sdrag.type==='draw'&&sdrag.pts.length>1){x.beginPath();sdrag.pts.forEach((q,i)=>{const sx=zToX(q[0]),sy=yToS(q[1]);i?x.lineTo(sx,sy):x.moveTo(sx,sy)});x.strokeStyle=T.ac;x.lineWidth=3.5;x.lineCap='round';x.stroke();x.lineCap='butt'}
+ if(sdrag&&(sdrag.type==='draw'||sdrag.type==='limb')&&sdrag.pts.length>1){x.beginPath();sdrag.pts.forEach((q,i)=>{const sx=zToX(q[0]),sy=yToS(q[1]);i?x.lineTo(sx,sy):x.moveTo(sx,sy)});x.strokeStyle=T.ac;x.lineWidth=3.5;x.lineCap='round';x.stroke();x.lineCap='butt'}
  drawRefHandles(x,'side');const bl=mj*V.s;x.strokeStyle=T.ink;x.lineWidth=2;x.beginPath();x.moveTo(14,ch-16);x.lineTo(14+bl,ch-16);x.moveTo(14,ch-20);x.lineTo(14,ch-12);x.moveTo(14+bl,ch-20);x.lineTo(14+bl,ch-12);x.stroke();x.fillStyle=T.ink;x.textBaseline='bottom';x.font='13px Geist,DM Sans,system-ui,sans-serif';x.fillText(mj+' mm',14,ch-22)}
 /* shape presets, each as thickness-by-height curves (front f, back b) */
 const SPRESETS={
@@ -1665,6 +1701,7 @@ function sideCancelDrag(){const d=sdrag;if(!d)return;const p=d.id&&partById(d.id
 cvS.addEventListener('pointerdown',e=>{if(view2d!=='side')return;sptr.set(e.pointerId,{x:e.clientX,y:e.clientY});if(sptr.size===2){sideCancelDrag();const a=[...sptr.values()];spinch={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1,c:{x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2}};return}if(sptr.size>2)return;cvS.setPointerCapture(e.pointerId);const r=cvS.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,w=sw(e),p=sel&&partById(sel);
  if(e.button===1||spaceDown||e.button===2){sdrag={type:'pan',sx:e.clientX,sy:e.clientY,ox:Vs.ox,oy:V.oy};return}
  if(sideTool==='draw'){if(!p){toast('Tap a part first, then draw its side.');return}sdrag={type:'draw',pts:[w]};return}
+ if(sideTool==='limb'){sdrag={type:'limb',pts:[w]};return}
  if(sideTool==='erase'||sideTool==='fill'){const o=drawOrder();for(let i=o.length-1;i>=0;i--){if(inPoly(w,profPoly(o[i]))){const q=o[i];if(sideTool==='erase'){select(q.id);delSel()}else if(selIds().length>1&&selIds().includes(q.id)){for(const i of selIds()){const r=partById(i);if(r&&!r.cut)r.color=paintColor}commit();requestRender()}else if(!q.cut&&q.color!==paintColor){q.color=paintColor;sel=q.id;commit();requestRender()}else select(q.id);return}}return}
  if(p&&sideShowDots&&sideTool==='edit'){let best=null,bd=touchMode?26:13;for(const h of sideHandlesOf(p)){const d=Math.hypot(h.x-mx,h.y-my);if(d<bd){bd=d;best=h}}
   if(best){const pr=ensureProf(p);sdrag={type:'h',s:best.s,i:best.i,orig:clone(pr),id:p.id,changed:false};return}}
@@ -1676,13 +1713,13 @@ cvS.addEventListener('pointerdown',e=>{if(view2d!=='side')return;sptr.set(e.poin
  if(sel)select(null);sdrag={type:'pan',sx:e.clientX,sy:e.clientY,ox:Vs.ox,oy:V.oy}});
 cvS.addEventListener('pointermove',e=>{if(view2d!=='side')return;if(sptr.has(e.pointerId))sptr.set(e.pointerId,{x:e.clientX,y:e.clientY});
  if(spinch&&sptr.size>=2){const a=[...sptr.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1,c={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2},r=cvS.getBoundingClientRect();Vs.ox+=c.x-spinch.c.x;V.oy+=c.y-spinch.c.y;zoomAt(d/spinch.d,c.x-r.left,c.y-r.top);spinch={d,c};return}
- if(!sdrag){const r=cvS.getBoundingClientRect(),p=sel&&partById(sel),mx=e.clientX-r.left,my=e.clientY-r.top;let cur='default',hv=null;if(sideTool==='draw')cur='crosshair';else if(p&&sideTool==='edit'){if(sideShowDots)for(const h of sideHandlesOf(p))if(Math.hypot(h.x-mx,h.y-my)<13)cur='ew-resize';
+ if(!sdrag){const r=cvS.getBoundingClientRect(),p=sel&&partById(sel),mx=e.clientX-r.left,my=e.clientY-r.top;let cur='default',hv=null;if(sideTool==='draw'||sideTool==='limb')cur='crosshair';else if(p&&sideTool==='edit'){if(sideShowDots)for(const h of sideHandlesOf(p))if(Math.hypot(h.x-mx,h.y-my)<13)cur='ew-resize';
   if(cur==='default'){const g=sideGrabAt(p,mx,my);if(g){cur='grab';hv={id:p.id,x:g.sx,y:g.sy,r:sideR(p)*V.s}}}}
   cvS.style.cursor=cur;if(hv||sideHover){sideHover=hv;requestRender(true,false)}return}
  const d=sdrag;
  if(d.type==='pan'){Vs.ox=d.ox+e.clientX-d.sx;V.oy=d.oy+e.clientY-d.sy;requestRender(true,false)}
  else if(d.type==='move'){if(!d.moved&&Math.hypot(e.clientX-d.sx,e.clientY-d.sy)<4)return;const w=sw(e),p=partById(d.id);if(!p)return;let dz=w[0]-d.w0[0],dy=w[1]-d.w0[1];if(snapOn){dz=Math.round(dz);dy=Math.round(dy)}if(d.group){for(const g of d.group){const q=partById(g.id);if(q){q.z=Math.round((g.z0+dz)*10)/10;q.pts=g.orig.map(v=>[v[0],v[1]+dy])}}}else{p.z=Math.round((d.z0+dz)*10)/10;p.pts=d.orig.map(q=>[q[0],q[1]+dy])}d.moved=true;cvS.style.cursor='grabbing';requestRender()}
- else if(d.type==='draw'){const w=sw(e),l=d.pts[d.pts.length-1];if(Math.hypot(w[0]-l[0],w[1]-l[1])>.35){d.pts.push(w);requestRender(true,false)}}
+ else if(d.type==='draw'||d.type==='limb'){const w=sw(e),l=d.pts[d.pts.length-1];if(Math.hypot(w[0]-l[0],w[1]-l[1])>.35){d.pts.push(w);requestRender(true,false)}}
  else if(d.type==='g'){const p=partById(d.id);if(!p)return;const pr=ensureProf(p),hD=p.depth/2,b=bbox(p.pts);let dz=sw(e)[0]-d.z0;if(snapOn)dz=Math.round(dz);const dl=dz/hD,R=sideR(p),W=[];
   for(let j=0;j<SN;j++){const y=b.y0+(b.y1-b.y0)*j/(SN-1),q=Math.min(1,Math.abs(y-d.y0)/R);W.push(.5*(1+Math.cos(Math.PI*q)))}
   applySideDelta(pr,d.orig,d.s,dl,W);d.changed=true;requestRender()}
@@ -1693,6 +1730,7 @@ cvS.addEventListener('pointermove',e=>{if(view2d!=='side')return;if(sptr.has(e.p
 function endSide(e){sptr.delete(e.pointerId);if(spinch){if(sptr.size<2)spinch=null;sdrag=null;return}const d=sdrag;sdrag=null;if(!d)return;
  if(d.type==='move'){if(d.moved)commit();else if(d.cyc)cycleNext(d.cyc);cvS.style.cursor=''}
  else if(d.type==='h'||d.type==='g'){const p=partById(d.id);if(p&&d.changed){tidyProf(p);commit()}else if(p)tidyProf(p)}
+ else if(d.type==='limb')finishLimbSide(d);
  else if(d.type==='draw'){const p=sel&&partById(sel);if(p&&d.pts.length>6){const pr=profFromLoop(p,d.pts);if(pr){p.prof=pr;tidyProf(p);commit();toast('Side shape updated!');setSideTool('edit')}else toast('Draw a closed shape around the part, from the side.')}else toast('Draw a bigger shape.')}
  requestRender()}
 cvS.addEventListener('pointerup',endSide);cvS.addEventListener('pointercancel',endSide);
@@ -1703,9 +1741,9 @@ function buildSideTools(){const n=$('#sOptShapes');if(!n)return;n.innerHTML='';
  mk('draw','Draw side','<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>',()=>setSideTool('draw'),'st');
  for(const k of Object.keys(SPRESETS))mk(k,SPRESETS[k].label,SPRESETS[k].icon,()=>applySidePreset(k),'sp');
  setSideTool('edit')}
-const SIDE_HINT={edit:'Pull the edge of the part to reshape its side.',select:'Tap a part to pick it.',erase:'Tap a part to remove it.',fill:'Tap a part to paint it. Pick a colour with the dot below the tools.',draw:'Draw the side of the part with your finger or mouse. Front is on the left.'};
-const SIDE_RAIL={edit:'reshape',select:'select',erase:'erase',fill:'fill'};
-function sideRouteTool(t){const M={select:'select',reshape:'edit',erase:'erase',fill:'fill'};if(M[t]){setSideTool(M[t]);return true}tool=t;setView('front');return true}
+const SIDE_HINT={edit:'Pull the edge of the part to reshape its side.',select:'Tap a part to pick it.',erase:'Tap a part to remove it.',fill:'Tap a part to paint it. Pick a colour with the dot below the tools.',draw:'Draw the side of the part with your finger or mouse. Front is on the left.',limb:'Drag a line for a tail or arm that sticks out of the front or back. It appears on the centre line.'};
+const SIDE_RAIL={edit:'reshape',select:'select',erase:'erase',fill:'fill',limb:'limb'};
+function sideRouteTool(t){const M={select:'select',reshape:'edit',erase:'erase',fill:'fill',limb:'limb'};if(M[t]){setSideTool(M[t]);return true}tool=t;setView('front');return true}
 function setSideTool(t){sideTool=t;sdrag=null;saveWS();try{sideOptsVis()}catch(e){}document.querySelectorAll('#sidePanel .st').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===t?'true':'false'));
  document.querySelectorAll('#tools .tool, #fillTool').forEach(b=>{const id=b.dataset.t||(b.id==='fillTool'?'fill':'');b.setAttribute('aria-pressed',view2d==='side'&&SIDE_RAIL[t]===id?'true':'false')});
  $('#hint2d').textContent=SIDE_HINT[t]||'';requestRender(true,false)}
@@ -1844,8 +1882,8 @@ function wireUX(){
   if(keep!=='#pcPop'&&typeof pcOpen!=='undefined'&&pcOpen){pcOpen=false;const p=$('#pcPop');if(p){p.hidden=true;const b=p.previousSibling;if(b&&b.setAttribute)b.setAttribute('aria-expanded','false')}}
   if(keep!=='#xfPop'){const x=$('#xfPop');if(x&&!x.hidden){x.hidden=true;document.querySelectorAll('#vScale,#vRot,#railScale,#railRot').forEach(b=>b.setAttribute('aria-pressed','false'))}}};
  addEventListener('keydown',e=>{if(e.key==='Escape')closePops()});
- const mg=$('#vMove');if(mg)mg.onclick=()=>{gizmoOn=!gizmoOn;if(gizmoOn)closePops();mg.setAttribute('aria-pressed',gizmoOn?'true':'false');requestRender()};
- window.openXf=(k,anchor)=>{const pop=$('#xfPop');if(!sel){toast('Tap a part first.');return}closePops('#xfPop');if(gizmoOn){gizmoOn=false;const m=$('#vMove');if(m)m.setAttribute('aria-pressed','false');requestRender()}
+ 
+ window.openXf=(k,anchor)=>{const pop=$('#xfPop');if(!sel){toast('Tap a part first.');return}closePops('#xfPop');
   const same=!pop.hidden&&pop.dataset.k===k&&pop.dataset.a===(anchor?anchor.id:'');
   document.querySelectorAll('#vScale,#vRot,#railScale,#railRot').forEach(b=>b.setAttribute('aria-pressed','false'));
   if(same){pop.hidden=true;return}
@@ -2023,7 +2061,7 @@ function showModel(M){blob.geometry.dispose();const g=new THREE.BufferGeometry()
 function rebuild(fine){const t0=performance.now();try{return rebuild0(fine)}finally{if(!fine){const dt=performance.now()-t0;syncGap=Math.round(Math.min(400,Math.max(110,syncGap*.6+dt*2.4*.4)))}}}
 function rebuild0(fine){const s=modelSize(),scm=document.getElementById('app').classList.contains('sculpting'),v=scm?(fine?Math.max(.8,s/90):Math.max(1.5,s/48)):fine?(LOWPERF?Math.max(1.3,s/55):Math.max(.9,s/90)):(LOWPERF?Math.max(2.4,s/28):Math.max(1.7,s/42));
  for(const id of [...fcache.keys()])if(!partById(id))fcache.delete(id);
- let M=null;try{M=buildModel(parts,drawOrder(),v,{blendOn,cache:fcache,colors:true,hl:hlSel(),grooves,sculpt,project:!!fine})}catch(e){console.error(e)}
+ let M=null;try{M=buildModel(parts,drawOrder(),v,{blendOn,cache:fcache,colors:true,hl:hlSel(),grooves,sculpt:sculptNow(),project:!!fine})}catch(e){console.error(e)}
  showModel(M);sigC=colSig();if(fine){findPieces(M);pcSig='';renderCheck()}requestRender(false,false)}
 function recolor(){sigC=colSig();if(!curM)return;curM.act=curM.act.map(p=>partById(p.id)||p);colorModel(curM,hlSel());
  {const D=buildDisplay(curM);blob.geometry.setAttribute('position',new THREE.BufferAttribute(D.pos,3));blob.geometry.setAttribute('normal',new THREE.BufferAttribute(D.nor,3));blob.geometry.setAttribute('color',new THREE.BufferAttribute(D.col,3));blob.geometry.computeBoundingSphere()}silStamp++;requestRender(true,false)}
@@ -2181,7 +2219,7 @@ function buildPresets(){const g=$('#pgrid');g.innerHTML='';
 function updateStats(){const b=modelBounds(),k=printK();$('#scaleOut').textContent=Math.round(k*100)+'%';
  $('#dims').textContent=b?(b.w*k).toFixed(1)+' × '+(b.h*k).toFixed(1)+' × '+(b.d*k).toFixed(1)+' mm':'Nothing to export yet';renderSizeUI();renderCheck()}
 function stlBytes(k){const b=modelBounds();if(!b)return null;const s=modelSize(),div={draft:55,standard:100,fine:150}[$('#detail').value]||100;
- const M=buildModel(parts,drawOrder(),Math.max(.5,s/div),{blendOn,cache:null,colors:false,grooves,sculpt,project:true});if(!M)return null;
+ const M=buildModel(parts,drawOrder(),Math.max(.5,s/div),{blendOn,cache:null,colors:false,grooves,sculpt:sculptNow(),project:true});if(!M)return null;
  const mx=(b.x0+b.x1)/2,mz=(b.z0+b.z1)/2,pos=M.pos,idx=M.idx,n=idx.length/3,buf=new ArrayBuffer(84+n*50),dv=new DataView(buf);dv.setUint32(80,n,true);let off=84;
  const P=[[0,0,0],[0,0,0],[0,0,0]];
  for(let t=0;t<n;t++){for(let j=0;j<3;j++){const a=idx[t*3+j]*3;P[j][0]=(pos[a]-mx)*k;P[j][1]=-(pos[a+2]-mz)*k;P[j][2]=(pos[a+1]-b.y0)*k}
@@ -2243,12 +2281,22 @@ const scR=()=>scTool==='grab'?({s:7,m:12,l:20}[scSize]||12):({s:2.5,m:4.5,l:8}[s
 const scRing=new THREE.Mesh(new THREE.RingGeometry(.82,1,40),new THREE.MeshBasicMaterial({color:0x2563eb,transparent:true,opacity:.9,depthTest:false,side:THREE.DoubleSide}));scRing.visible=false;scRing.renderOrder=10;scene.add(scRing);
 function scHit(e){if(!R||!blob.visible)return null;const r=R.domElement.getBoundingClientRect(),rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1),cam);const h=rc.intersectObject(blob)[0];if(!h||!h.face)return null;return{p:h.point.clone(),n:h.face.normal.clone().normalize()}}
 function scShowRing(h){if(!h||scTool==='view'){if(scRing.visible){scRing.visible=false;requestRender(false,false)}return}const r=scR();scRing.visible=true;scRing.scale.setScalar(r);scRing.position.copy(h.p).addScaledVector(h.n,.3);scRing.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),h.n);scRing.material.color.setHex(scTool==='add'?0x16a34a:scTool==='dent'?0xdc2626:scTool==='grab'?0x7c3aed:0x2563eb);requestRender(false,false)}
+/* sculpting sticks to the part it was made on: move, resize, turn or reshape the part and the detail comes along */
+function partFrame(p){const b=bbox(p.pts),d=Math.PI/180;return{O:[b.cx,b.cy,p.z],S:[Math.max(b.w,1),Math.max(b.h,1),Math.max(p.depth,1)],R:rotM((p.rx||0)*d,(p.ry||0)*d,(p.rz||0)*d)}}
+const mv3=(R,v)=>[R[0]*v[0]+R[1]*v[1]+R[2]*v[2],R[3]*v[0]+R[4]*v[1]+R[5]*v[2],R[6]*v[0]+R[7]*v[1]+R[8]*v[2]],mv3T=(R,v)=>[R[0]*v[0]+R[3]*v[1]+R[6]*v[2],R[1]*v[0]+R[4]*v[1]+R[7]*v[2],R[2]*v[0]+R[5]*v[1]+R[8]*v[2]];
+function scAttach(d,h){const id=pickPart(h.p),p=id&&partById(id);if(!p||p.cut)return;d.pid=id;d.fr=partFrame(p);d.c0=d.c.slice();d.r0=d.r}
+function sculptNow(){if(!sculpt.length)return sculpt;const F=new Map();
+ return sculpt.map(d=>{if(!d.pid&&curM&&!d.lg){d.lg=1;const id=pickPart({x:d.c[0],y:d.c[1],z:d.c[2]}),q=id&&partById(id);if(q&&!q.cut){d.pid=id;d.fr=partFrame(q);d.c0=d.c.slice();d.r0=d.r;if(d.d)d.d0=d.d.slice()}}
+  if(!d.pid||!d.fr||!d.c0)return d;const p=partById(d.pid);if(!p)return d;let B=F.get(p.id);if(!B){B=partFrame(p);F.set(p.id,B)}
+  const A=d.fr,k=[B.S[0]/A.S[0],B.S[1]/A.S[1],B.S[2]/A.S[2]],map=v=>{const l=mv3T(A.R,v);return mv3(B.R,[l[0]*k[0],l[1]*k[1],l[2]*k[2]])};
+  const m=map([d.c0[0]-A.O[0],d.c0[1]-A.O[1],d.c0[2]-A.O[2]]),n=Object.assign({},d,{c:[B.O[0]+m[0],B.O[1]+m[1],B.O[2]+m[2]]});
+  if(d.r0)n.r=d.r0*Math.cbrt(k[0]*k[1]*k[2]);if(d.d0)n.d=map(d.d0);return n})}
 function scDab(h){const r=scR(),d={t:scTool,r,s:!!symOn};if(scTool==='smooth'){d.c=[+h.p.x.toFixed(2),+h.p.y.toFixed(2),+h.p.z.toFixed(2)];d.w=scStr==='g'?.35:.75}else{const hh=r*(scStr==='g'?.3:.6),c=h.p.clone().addScaledVector(h.n,(scTool==='add'?-1:1)*(r-hh));d.c=[+c.x.toFixed(2),+c.y.toFixed(2),+c.z.toFixed(2)]}
- if(sculpt.length>=6000){toast('That is a lot of detail! Clear some sculpting to add more.');return false}sculpt.push(d);sculptVer++;requestRender();return true}
-function scEnd(){if(!scStroke)return;const n0=scStroke.n0,g=scStroke.grab;scStroke=null;if(g&&Math.hypot(g.d[0],g.d[1],g.d[2])<.2){sculpt.splice(sculpt.indexOf(g),1);sculptVer++;requestRender();return}if(sculpt.length>n0)commit()}
+ scAttach(d,h);if(sculpt.length>=6000){toast('That is a lot of detail! Clear some sculpting to add more.');return false}sculpt.push(d);sculptVer++;requestRender();return true}
+function scEnd(){if(!scStroke)return;const n0=scStroke.n0,g=scStroke.grab;scStroke=null;if(g)g.d0=g.d.slice();if(g&&Math.hypot(g.d[0],g.d[1],g.d[2])<.2){sculpt.splice(sculpt.indexOf(g),1);sculptVer++;requestRender();return}if(sculpt.length>n0)commit()}
 if(R){host.addEventListener('pointerdown',e=>{if(!isSculpt()||e.target.closest('.vcube-wrap'))return;if(scStroke){scEnd();return}if(scTool==='view'||(e.pointerType==='mouse'&&e.button!==0))return;const h=scHit(e);if(!h)return;
   e.stopPropagation();e.preventDefault();try{R.domElement.setPointerCapture(e.pointerId)}catch(x){}scStroke={id:e.pointerId,last:h.p.clone(),n0:sculpt.length};
-  if(scTool==='grab'){if(sculpt.length>=6000){toast('That is a lot of detail! Clear some sculpting to add more.');scStroke=null;return}const g={t:'grab',r:scR(),s:!!symOn,c:[+h.p.x.toFixed(2),+h.p.y.toFixed(2),+h.p.z.toFixed(2)],d:[0,0,0]};sculpt.push(g);scStroke.grab=g;scStroke.p0=h.p.clone();scStroke.plane=new THREE.Plane().setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).negate(),h.p);scShowRing(h);return}
+  if(scTool==='grab'){if(sculpt.length>=6000){toast('That is a lot of detail! Clear some sculpting to add more.');scStroke=null;return}const g={t:'grab',r:scR(),s:!!symOn,c:[+h.p.x.toFixed(2),+h.p.y.toFixed(2),+h.p.z.toFixed(2)],d:[0,0,0]};scAttach(g,h);sculpt.push(g);scStroke.grab=g;scStroke.p0=h.p.clone();scStroke.plane=new THREE.Plane().setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).negate(),h.p);scShowRing(h);return}
   scDab(h);scShowRing(h)},true);
  host.addEventListener('pointermove',e=>{if(!isSculpt())return;if(scStroke&&scStroke.grab&&e.pointerId===scStroke.id){e.stopPropagation();const r=R.domElement.getBoundingClientRect(),rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1),cam);const pt=new THREE.Vector3();if(!rc.ray.intersectPlane(scStroke.plane,pt))return;const D=pt.sub(scStroke.p0),mx=scStroke.grab.r*1.1;if(D.length()>mx)D.setLength(mx);scStroke.grab.d=[+D.x.toFixed(2),+D.y.toFixed(2),+D.z.toFixed(2)];sculptVer++;requestRender();scRing.position.copy(scStroke.p0).add(D);requestRender(false,false);return}
   if(scStroke&&e.pointerId===scStroke.id){e.stopPropagation();const h=scHit(e);if(!h)return;const sp=scR()*.4,dd=h.p.distanceTo(scStroke.last);if(dd>=sp){const steps=Math.min(8,Math.floor(dd/sp));for(let i=1;i<=steps;i++){const q=scStroke.last.clone().lerp(h.p,i/steps);if(!scDab({p:q,n:h.n}))break}scStroke.last.copy(h.p)}scShowRing(h);return}
@@ -2256,7 +2304,7 @@ if(R){host.addEventListener('pointerdown',e=>{if(!isSculpt()||e.target.closest('
  for(const t of['pointerup','pointercancel'])host.addEventListener(t,e=>{if(scStroke&&e.pointerId===scStroke.id){e.stopPropagation();scEnd()}},true);
  host.addEventListener('pointerleave',()=>{if(!scStroke)scShowRing(null)})}
 function setSculpt(on){const ap=$('#app');if(on===isSculpt())return;
- if(on){scPrev=ap.dataset.mode||'draw';closePops();if(gizmoOn){gizmoOn=false;const m=$('#vMove');if(m)m.setAttribute('aria-pressed','false')}ap.classList.add('sculpting');setMode('view');sigG='';toast('Sculpt: drag on your model to add small details. Drag the background to turn it.')}
+ if(on){scPrev=ap.dataset.mode||'draw';closePops();ap.classList.add('sculpting');setMode('view');sigG='';toast('Sculpt: drag on your model to add small details. Drag the background to turn it.')}
  else{ap.classList.remove('sculpting');scShowRing(null);setMode(scPrev==='view'?'view':'draw');sigG=''}
  $('#sculptBtn').setAttribute('aria-pressed',on?'true':'false');scSync();requestRender()}
 function scSync(){document.querySelectorAll('#sculptPanel [data-sc]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sc===scTool?'true':'false'));
@@ -2287,34 +2335,62 @@ function init(){buildTools();buildHud();buildPresets();let saved=null;try{saved=
  new ResizeObserver(size2d).observe($('#s2d'));if(R)new ResizeObserver(resize3d).observe(host);
  size2d();resize3d();frame3d(false);requestRender();
  const th=()=>{makeFloor();requestRender()};matchMedia('(prefers-color-scheme: dark)').addEventListener('change',th);new MutationObserver(th).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']})}
-/* ---------- move parts inside the 3D preview ---------- */
+/* ---------- the 3D handle: arrows move, rings turn, the middle cube resizes ---------- */
 const AX={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,1)},AXC={x:0xe5484d,y:0x2fb344,z:0x1c7ed6};
 const gizmo=new THREE.Group(),gpick=[],gmat={};
-for(const k of['x','y','z']){const g=new THREE.Group(),m=new THREE.MeshBasicMaterial({color:AXC[k],depthTest:false,transparent:true});gmat[k]=m;
- const sh=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.78,10),m);sh.position.y=.39;
- const cn=new THREE.Mesh(new THREE.ConeGeometry(.1,.26,16),m);cn.position.y=.91;
- const pk=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,1.05,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false}));pk.position.y=.55;pk.userData.axis=k;gpick.push(pk);
- sh.renderOrder=cn.renderOrder=999;g.add(sh,cn,pk);if(k==='x')g.rotation.z=-Math.PI/2;if(k==='z')g.rotation.x=Math.PI/2;gizmo.add(g)}
+const gMat=(id,c)=>{const m=new THREE.MeshBasicMaterial({color:c,depthTest:false,transparent:true,opacity:.95});m.userData.base=c;gmat[id]=m;return m};
+const gInv=()=>new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false});
+for(const k of['x','y','z']){
+ const g=new THREE.Group(),m=gMat('m:'+k,AXC[k]);
+ const sh=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,1.05,10),m);sh.position.y=.775;
+ const cn=new THREE.Mesh(new THREE.ConeGeometry(.13,.34,16),m);cn.position.y=1.47;
+ const pk=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.74,8),gInv());pk.position.y=.61;pk.userData={kind:'m',axis:k};gpick.push(pk);
+ const pk2=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.42,8),gInv());pk2.position.y=1.5;pk2.userData={kind:'m',axis:k};gpick.push(pk2);
+ sh.renderOrder=cn.renderOrder=999;g.add(sh,cn,pk,pk2);if(k==='x')g.rotation.z=-Math.PI/2;if(k==='z')g.rotation.x=Math.PI/2;gizmo.add(g);
+ const rg=new THREE.Group(),ring=new THREE.Mesh(new THREE.TorusGeometry(1.15,.03,8,72),gMat('r:'+k,AXC[k])),rp=new THREE.Mesh(new THREE.TorusGeometry(1.15,.13,6,40),gInv());
+ ring.renderOrder=998;rp.userData={kind:'r',axis:k};gpick.push(rp);rg.add(ring,rp);if(k==='x')rg.rotation.y=Math.PI/2;if(k==='y')rg.rotation.x=Math.PI/2;gizmo.add(rg)}
+{const cube=new THREE.Mesh(new THREE.BoxGeometry(.26,.26,.26),gMat('s',0xffffff)),cp=new THREE.Mesh(new THREE.SphereGeometry(.24,8,8),gInv());cube.renderOrder=1000;cp.userData={kind:'s'};gpick.push(cp);gizmo.add(cube,cp)}
 gizmo.visible=false;scene.add(gizmo);
-let gizmoOn=false;function updateGizmo(){const p=sel&&partById(sel);gizmo.visible=!!p&&gizmoOn&&selIds().length<2;if(!p)return;const b=bbox(p.pts);gizmo.position.set(b.cx,b.cy,p.z);gizmo.scale.setScalar(cam.position.distanceTo(gizmo.position)*(touchMode?.11:.075));gizmo.updateMatrixWorld(true)}
-function setGizmoHi(k){for(const a in gmat)gmat[a].color.setHex(AXC[a]).offsetHSL(0,0,a===k?.18:0);requestRender(false,false)}
+let gizmoOn=true;
+function updateGizmo(){const p=sel&&partById(sel);gizmo.visible=!!p&&gizmoOn&&selIds().length<2&&!(typeof isSculpt==='function'&&isSculpt());if(!p)return;const b=bbox(p.pts);gizmo.position.set(b.cx,b.cy,p.z);gizmo.scale.setScalar(cam.position.distanceTo(gizmo.position)*(touchMode?.09:.062));gizmo.updateMatrixWorld(true)}
+function setGizmoHi(id){for(const a in gmat)gmat[a].color.setHex(gmat[a].userData.base).offsetHSL(0,0,a===id?.2:0);requestRender(false,false)}
 /* where along an axis line the mouse ray passes closest */
 function axisParam(ray,O,D){const w0=O.clone().sub(ray.origin),b=D.dot(ray.direction),d=D.dot(w0),e=ray.direction.dot(w0),den=1-b*b;return den<1e-4?null:(b*e-d)/den}
+/* angle of the mouse around an axis, measured on the ring's own plane (right-handed) */
+const RUV={x:['y','z'],y:['z','x'],z:['x','y']};
+function ringAngle(ray,O,k){const N=AX[k],den=N.dot(ray.direction);if(Math.abs(den)<.02)return null;const t=N.dot(O.clone().sub(ray.origin))/den,P=ray.origin.clone().add(ray.direction.clone().multiplyScalar(t)).sub(O),[u,v]=RUV[k];return Math.atan2(P.dot(AX[v]),P.dot(AX[u]))}
+/* part rotation is Rz*Ry*Rx (degrees); turning about a world axis is a left-multiply, then back to the three angles */
+function rotM(a,b,g){const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);return[cg*cb,cg*sb*sa-sg*ca,cg*sb*ca+sg*sa,sg*cb,sg*sb*sa+cg*ca,sg*sb*ca-cg*sa,-sb,cb*sa,cb*ca]}
+function mul3(A,B){const o=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)o.push(A[r*3]*B[c]+A[r*3+1]*B[3+c]+A[r*3+2]*B[6+c]);return o}
+function axisRot(k,t){const c=Math.cos(t),s=Math.sin(t);return k==='x'?[1,0,0,0,c,-s,0,s,c]:k==='y'?[c,0,s,0,1,0,-s,0,c]:[c,-s,0,s,c,0,0,0,1]}
+function eulerOf(R){const sb=clamp(-R[6],-1,1),b=Math.asin(sb);let a,g;if(Math.abs(R[6])<.99999){a=Math.atan2(R[7],R[8]);g=Math.atan2(R[3],R[0])}else{a=0;g=Math.atan2(-R[1],R[4])}const d=180/Math.PI,r=v=>Math.round(v*d*10)/10;return{rx:r(a),ry:r(b),rz:r(g)}}
+const gtip=document.createElement('div');gtip.className='giztip';gtip.hidden=true;host.appendChild(gtip);
+const showTip=t=>{gtip.textContent=t;gtip.hidden=false},hideTip=()=>{gtip.hidden=true};
 function focusSel(){const p=sel&&partById(sel);if(!p){toast('Select a part first.');return}const b=bbox(p.pts);tgt.set(b.cx,b.cy,p.z);dist=Math.max(35,Math.hypot(b.w,b.h,p.depth)*2.8);placeCam();requestRender(false,false)}
 $('#vFocus').onclick=focusSel;$('#vFront').onclick=()=>frame3d('front');$('#vSide').onclick=()=>frame3d('side');$('#vTop').onclick=()=>frame3d('top');$('#vReset').onclick=()=>frame3d('iso');
 if(R){const dom3=R.domElement;let gd=null;
  const rayOf=e=>{const r=dom3.getBoundingClientRect(),rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1),cam);return rc};
- const gHit=e=>{if(!gizmo.visible)return null;const rc=rayOf(e),h=rc.intersectObjects(gpick,false)[0];return h?{rc,k:h.object.userData.axis}:null};
+ const gHit=e=>{if(!gizmo.visible)return null;const rc=rayOf(e),h=rc.intersectObjects(gpick,false)[0];return h?{rc,u:h.object.userData}:null};
+ const hiId=u=>u.kind==='s'?'s':u.kind+':'+u.axis;
+ const centreXY=O=>{const r=dom3.getBoundingClientRect(),v=O.clone().project(cam);return[r.left+(v.x+1)/2*r.width,r.top+(1-v.y)/2*r.height]};
  /* capture phase: these run before the orbit handlers and stop them while a handle is in use */
  dom3.addEventListener('pointerdown',e=>{if(e.button!==0||e.shiftKey)return;const h=gHit(e),p=sel&&partById(sel);if(!h||!p)return;
-  const b=bbox(p.pts),O=new THREE.Vector3(b.cx,b.cy,p.z),s0=axisParam(h.rc.ray,O,AX[h.k]);if(s0===null)return;
-  e.stopImmediatePropagation();dom3.setPointerCapture(e.pointerId);gd={k:h.k,id:sel,O,orig:clone(p.pts),z0:p.z,s0,moved:false,pid:e.pointerId};setGizmoHi(h.k);dom3.style.cursor='grabbing'},true);
+  const b=bbox(p.pts),O=new THREE.Vector3(b.cx,b.cy,p.z),u=h.u,k=u.axis;let st=null;
+  if(u.kind==='m'){const s0=axisParam(h.rc.ray,O,AX[k]);if(s0===null)return;st={kind:'m',k,O,orig:clone(p.pts),z0:p.z,s0}}
+  else if(u.kind==='r'){const a0=ringAngle(h.rc.ray,O,k);if(a0===null)return;const d=Math.PI/180;st={kind:'r',k,O,a0,R0:rotM((p.rx||0)*d,(p.ry||0)*d,(p.rz||0)*d),e0:{rx:p.rx||0,ry:p.ry||0,rz:p.rz||0}}}
+  else{const c=centreXY(O);st={kind:'s',O,c,d0:Math.max(24,Math.hypot(e.clientX-c[0],e.clientY-c[1])),orig:clone(p.pts),dep:p.depth,cx:b.cx,cy:b.cy}}
+  e.stopImmediatePropagation();dom3.setPointerCapture(e.pointerId);gd=Object.assign(st,{id:sel,moved:false,pid:e.pointerId});setGizmoHi(hiId(u));dom3.style.cursor='grabbing'},true);
  dom3.addEventListener('pointermove',e=>{
-  if(gd){if(e.pointerId!==gd.pid)return;e.stopImmediatePropagation();const s=axisParam(rayOf(e).ray,gd.O,AX[gd.k]),p=partById(gd.id);if(s===null||!p)return;
-   let d=s-gd.s0;if(snapOn)d=Math.round(d);if(d!==0)gd.moved=true;
-   if(gd.k==='x')p.pts=gd.orig.map(q=>[q[0]+d,q[1]]);else if(gd.k==='y')p.pts=gd.orig.map(q=>[q[0],q[1]+d]);else p.z=gd.z0+d;requestRender();return}
-  if(e.buttons===0){const h=gHit(e);setGizmoHi(h?h.k:null);dom3.style.cursor=h?'pointer':'grab'}},true);
- const gEnd=e=>{if(!gd||e.pointerId!==gd.pid)return;e.stopImmediatePropagation();const m=gd.moved;gd=null;setGizmoHi(null);dom3.style.cursor='grab';if(m)commit()};
+  if(gd){if(e.pointerId!==gd.pid)return;e.stopImmediatePropagation();const p=partById(gd.id);if(!p)return;
+   if(gd.kind==='m'){const s=axisParam(rayOf(e).ray,gd.O,AX[gd.k]);if(s===null)return;let d=s-gd.s0;if(snapOn)d=Math.round(d);if(d!==0)gd.moved=true;
+    if(gd.k==='x')p.pts=gd.orig.map(q=>[q[0]+d,q[1]]);else if(gd.k==='y')p.pts=gd.orig.map(q=>[q[0],q[1]+d]);else p.z=gd.z0+d;showTip('Moved '+(Math.round(d*10)/10)+' mm')}
+   else if(gd.kind==='r'){const a=ringAngle(rayOf(e).ray,gd.O,gd.k);if(a===null)return;let t=a-gd.a0;t=Math.atan2(Math.sin(t),Math.cos(t));let dg=t*180/Math.PI;const s15=Math.round(dg/15)*15;if(Math.abs(dg-s15)<4)dg=s15;if(Math.abs(dg)>.2)gd.moved=true;
+    const E=eulerOf(mul3(axisRot(gd.k,dg*Math.PI/180),gd.R0));p.rx=E.rx;p.ry=E.ry;p.rz=E.rz;showTip('Turned '+Math.round(dg)+'°')}
+   else{let f=Math.hypot(e.clientX-gd.c[0],e.clientY-gd.c[1])/gd.d0;f=clamp(Math.round(f*20)/20,.2,5);if(f!==1)gd.moved=true;
+    p.pts=gd.orig.map(q=>[gd.cx+(q[0]-gd.cx)*f,gd.cy+(q[1]-gd.cy)*f]);p.depth=clamp(gd.dep*f,2,p.cut?200:80);showTip('Size '+Math.round(f*100)+'%')}
+   requestRender();return}
+  if(e.buttons===0){const h=gHit(e);setGizmoHi(h?hiId(h.u):null);dom3.style.cursor=h?'pointer':'grab'}},true);
+ const gEnd=e=>{if(!gd||e.pointerId!==gd.pid)return;e.stopImmediatePropagation();const m=gd.moved;gd=null;setGizmoHi(null);hideTip();dom3.style.cursor='grab';if(m)commit()};
  dom3.addEventListener('pointerup',gEnd,true);dom3.addEventListener('pointercancel',gEnd,true);
  dom3.addEventListener('dblclick',()=>{if(sel)focusSel()})}
 /* exact position fields */
