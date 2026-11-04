@@ -1,56 +1,46 @@
 # CLAUDE.md: Sketch3D
 
-## What this project is
-Sketch3D is a free web app where kids draw shapes, turn them into smooth 3D parts, join parts into a character, and save an STL file to 3D print.
+Sketch3D is a free web app where kids (about ages 9–11, many neurodiverse, easily frustrated) draw shapes, turn them into smooth 3D parts, join parts into a character, and save an STL file to 3D print.
 
-- **Users:** primary-school students, about ages 9–11. Many are neurodiverse and get frustrated easily.
-- **Owner:** Nathan, an education support worker. He does not write code, so explain decisions in plain language and keep summaries short.
-- **Current state:** a working single-file prototype lives in `index.html`, built from `src/` (see `DEVELOPMENT.md`). We are rebuilding it with a cleaner, faster architecture. **Treat the prototype as the behaviour spec, not as code to copy.** Keep the old files in a `legacy/` folder for reference until the rebuild matches it.
+**Owner:** Nathan, an education support worker. He does not write code. Explain decisions in plain language and keep summaries short.
 
-## Target devices (hard constraints)
-- **Chromebooks**: school-managed, often low-end (Celeron or MediaTek, 4 GB RAM, weak GPU), in Chrome.
-- **iPads in Chrome**: Chrome on iOS runs on Apple's WebKit engine, so build and test for Safari behaviour. Memory per tab is limited.
-- Touch-first, but must also work with a mouse and trackpad.
-- Works offline once loaded (PWA). No account, no login, no tracking, no network calls at runtime.
-- Student projects stay on the device. Never upload models or send any data anywhere.
+## Where things are
+- The plan to follow: `docs/superpowers/plans/2026-11-04-sketch3d-rebuild.md`. Work through its tasks in order, one task per branch or PR.
+- How the code is organised, commands, data model, testing: `DEVELOPMENT.md`.
+- The old prototype (behaviour reference only, do not copy its structure): `legacy/`, and `DEVELOPMENT-prototype.md` describes it.
 
-## Stack
-- Vite + TypeScript (strict mode).
-- three.js, imported by named module so it tree-shakes. No other large dependencies without asking Nathan first.
-- UI: vanilla TypeScript, or Preact if components really help. **No React, no UI kits, no CSS frameworks.** Plain CSS with custom properties.
-- Heavy maths (SDF sampling, meshing) runs in a **Web Worker**. The main thread never blocks.
-- Input: Pointer Events with `touch-action: none` on canvases. No separate mouse/touch code paths.
-- Storage: IndexedDB for projects. Export: Blob download of a binary STL.
-- Tests: Vitest for geometry/sculpt/profile maths; Playwright (Chromium **and** WebKit projects) for UI checks.
+## Hard constraints
+- **Devices:** low-end school Chromebooks (4 GB RAM, weak GPU) in Chrome, and iPads in Chrome. **Chrome on iOS runs on Apple's WebKit engine**, so build and test for Safari behaviour. Touch-first; mouse and trackpad must also work.
+- **Budgets:** JS under 500 KB gzipped (the build fails past that). 30 fps or better while dragging, sculpting and rotating, and no single frame task over 50 ms. Render on demand, not in a constant loop. Cap `devicePixelRatio` at 2.
+- **Privacy:** no account, no login, no tracking, no network calls at runtime. Student work never leaves the device.
+- **Print:** build area 110 × 110 × 70 mm; binary STL in millimetres.
 
-## Performance budgets
-- JS bundle under 500 KB gzipped, including three.js. Fail the build if it grows past that.
-- Drag, sculpt and rotate stay smooth on a 4 GB Chromebook. Target 30 fps or better, and no single frame task over 50 ms.
-- Render on demand, not in a constant loop. Cap `devicePixelRatio` at 2.
-- Use adaptive mesh resolution: coarse while dragging, refined when the user stops.
-- Profile with Chrome DevTools CPU throttling at 4–6x before calling any feature done.
+## Stack (do not add to it without asking Nathan)
+Vite, TypeScript (strict), three.js (named imports only), Preact + @preact/signals, plain CSS custom properties, Web Worker with typed arrays, `idb-keyval`, Vitest, Playwright (Chromium and WebKit), `size-limit`.
+- **No** React, UI kits, CSS frameworks, or `SharedArrayBuffer` (GitHub Pages cannot send the headers it needs).
+- `src/core/` is pure TypeScript with no DOM or three.js imports (a lint rule enforces this).
+- Input is Pointer Events with `touch-action: none` on canvases. One code path for mouse, touch and pen.
 
 ## UX rules for kids
-- Touch targets at least 48 px, with spacing between them. No hover-only features.
-- Every action is undoable, and Undo/Redo is always visible. Never lose a student's work: autosave constantly.
-- Plain, friendly wording at about a grade 3 reading level. Sentence case. Verb-first buttons ("Save to print", "Make a copy"). No jargon (say "How thick?", not "extrusion depth").
-- Errors say what happened and what to do next. Never blame the user.
-- Don't make the user wait without feedback. Show progress for anything over 300 ms.
-- Calm visual design: few controls on screen at once, clear icons with text labels, strong colour contrast, respect `prefers-reduced-motion`.
-- One obvious way to do each thing. Remove clutter rather than adding options.
+- Touch targets at least 48 px, with spacing. No hover-only features.
+- Every action is undoable. Undo/Redo is always visible (bottom-left of the drawing view). Autosave constantly. Never lose a student's work.
+- Words: about a grade 3 reading level, sentence case, verb-first buttons ("Save to print", "Make a copy"), no jargon ("How thick?", not "extrusion depth"). All user-facing text lives in `src/ui/copy.ts`.
+- Errors say what happened and what to do next, and never blame the user.
+- Show progress for anything over 300 ms. Respect `prefers-reduced-motion`.
+- Calm design: few controls on screen at once, icons with text labels, strong contrast. One obvious way to do each thing. Remove clutter rather than add options.
+- Icons are Nathan's artwork in `public/icons/`. Keep the names and do not redraw them.
 
-## Core features to preserve (see `DEVELOPMENT.md` for the data model)
-Front, Side and 3D views that always agree; draw outlines or pick ready-made shapes; Tail/arm tool; reshape, size, turn, thickness slider, roundness; melt parts together; cut away (hole/slot); eyes, smile, crease; sculpt mode; paint; multi-select; 3D gizmo (move, turn, resize); presets; Save to print (STL, within a 110 x 110 x 70 mm build area).
-
-## Working style
-- **Plan first.** For any change bigger than a small fix, write a short plan and wait for Nathan's OK before coding.
-- Build in stages and test after each: data model + meshing worker, then 2D views, then 3D editing, then export, then polish.
-- Run `npm run build`, the unit tests and the Playwright tests before saying something is done. Take screenshots at 1180x820, 820x1180, 1024x768, 1280x650 and 1366x768.
-- Ask before adding a dependency, changing the file structure, or removing a feature.
-- Keep commits small, with clear messages. Do not commit `node_modules/` or build output unless the host needs it (GitHub Pages serves `index.html` or `dist/`).
-- When unsure about behaviour, check the prototype in `legacy/` and match it.
+## How to work
+- **Plan first** for anything bigger than a small fix. Write a short plan and wait for Nathan's OK.
+- **Test first.** Write the failing test, see it fail, make it pass, commit. Small commits with clear messages.
+- Before saying anything is done, run `npm run lint && npm run typecheck && npm test && npm run build && npm run size && npm run test:e2e`, and look at screenshots at 1180×820, 820×1180, 1024×768, 1280×650 and 1366×768.
+- Ask before adding a dependency, changing the folder structure, or removing a feature.
+- Do not commit `node_modules/` or `dist/`.
+- When unsure how something should behave, run the prototype in `legacy/` and match it.
+- Stop and ask at the Task 7 performance gate in the plan.
 
 ## Known risks
-- The SDF smoothing is the most expensive part. Benchmark it on a low-end Chromebook early, and be ready to switch to a cheaper approach (such as surface nets on a coarse grid with local refinement).
-- iOS memory limits and WebKit differences. Test in WebKit, and on a real iPad before release.
-- School networks may block some hosts. Keep the app a static site that can be hosted anywhere.
+- The signed-distance-field meshing is the most expensive part. Benchmark early on a throttled low-end profile.
+- iOS memory limits and WebKit differences. Test on a real iPad before each release.
+- Service workers may not work in Chrome on iPad. Feature-detect them, and never make the app depend on them.
+- School networks may block hosts. Keep it a static site that can be hosted anywhere.

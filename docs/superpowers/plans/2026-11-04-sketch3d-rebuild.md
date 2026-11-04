@@ -73,7 +73,7 @@ sketch3d/
 **Files:**
 - Create: `package.json`, `vite.config.ts`, `tsconfig.json`, `index.html`, `src/main.tsx`, `.github/workflows/ci.yml`, `.size-limit.json`, `playwright.config.ts`, `vitest.config.ts`, `eslint.config.js`, `tests/e2e/smoke.spec.ts`
 - Move: `index.html`, `src/`, `build.mjs`, `package.json` (the old ones) → `legacy/` (so the prototype stays runnable and readable)
-- Modify: `README.md`, `DEVELOPMENT.md`
+- Modify: `README.md`. (`CLAUDE.md` and `DEVELOPMENT.md` already describe the rebuild; `DEVELOPMENT-prototype.md` documents the old app.)
 
 **Interfaces:**
 - Produces: npm scripts `dev`, `build`, `test` (Vitest), `test:e2e` (Playwright), `size` (size-limit), `lint`, `typecheck`, `bench`. Every later task uses these names.
@@ -83,7 +83,7 @@ sketch3d/
 - [ ] **Step 3: Scaffold** with Vite + TypeScript strict + Preact (`@preact/preset-vite`). Add ESLint rule `no-restricted-imports` forbidding `three`, `preact` and DOM globals inside `src/core/**`. Configure `build.target: 'es2020'` and `build.rollupOptions` to emit a separate worker chunk.
 - [ ] **Step 4: Add `size-limit`** with a 500 KB gzip limit on the main JS and worker JS combined.
 - [ ] **Step 5: CI** (`ci.yml`): `npm ci`, `lint`, `typecheck`, `test`, `build`, `size`, `npx playwright install --with-deps chromium webkit`, `test:e2e`. Run `npm run test:e2e` and expect PASS.
-- [ ] **Step 6: Move the prototype to `legacy/`,** update `README.md` and `DEVELOPMENT.md` for the new layout, and commit: `chore: scaffold Vite+TS app, CI, budgets; move prototype to legacy/`.
+- [ ] **Step 6: Move the prototype to `legacy/`,** update `README.md` for the new layout, and commit: `chore: scaffold Vite+TS app, CI, budgets; move prototype to legacy/`.
 
 ---
 

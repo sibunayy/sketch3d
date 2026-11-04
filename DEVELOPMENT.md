@@ -1,47 +1,82 @@
-# Sketch3D: developer notes
+# Sketch3D: development guide
 
-## Build
-`index.html` is generated. Edit files in `src/`, then:
+## Quick start
 ```
-npm install      # installs three@0.128.0 (needed only for the inlined three.min.js)
-node build.mjs   # writes index.html
+npm install
+npm run dev          # local dev server
+npm test             # unit tests (Vitest)
+npm run test:e2e     # browser tests (Playwright: Chromium, iPad WebKit, Chromebook size)
+npm run build        # production build into dist/
+npm run size         # fails if the bundle is over 500 KB gzipped
+npm run bench        # meshing benchmark against bench.budget.json
+npm run lint && npm run typecheck
 ```
-Commit both `src/` and the rebuilt `index.html` (GitHub Pages serves `index.html`).
-`src/*.js` are concatenated in the order listed in `build.mjs` into one `<script>`, then `init();` is appended. They share one global scope (no modules).
+Node.js 22 or later. First time with Playwright: `npx playwright install --with-deps chromium webkit`.
 
-## Source files
-| File | Role |
-| --- | --- |
-| `template.html` | HTML + CSS. `<!--THREE-->` is replaced by three.js |
-| `skin.js` | Base64 icons, icon swapping, Multi button |
-| `part2.js` | Part model, history/persistence, multi-select core |
-| `sdf.js`, `fix.js` | SDF mesh building, colouring, outline repair |
-| `part3.js` | Front view: tools, drawing, selection, ghost outline |
-| `presets.js` | Ready-made characters |
-| `features.js` | Mirror/symmetry, Tail/arm, misc features |
-| `side.js`, `sil.js` | Side view and silhouette/profile maths |
-| `ref.js` | Reference picture tracing |
-| `ux.js`, `ui3d.js` | Panels, 3D view, sculpt, export, layers |
-| `part5.js` | 3D gizmo and camera focus |
+## How it works
+1. The **document** (`Doc`) is a list of parts, sculpt dabs and grooves. It is small, plain data.
+2. Each part is a 2D outline extruded to a thickness, with roundness, a side profile, rotation, taper and squash. Each part has a **signed distance field** (SDF): a function that returns how far a point is from the surface (negative inside).
+3. `buildSceneField` combines the parts. Parts that are set to melt use a smooth minimum so they blend. Cut-away parts subtract.
+4. A **surface-nets mesher** turns the field into a triangle mesh on a grid. It runs in a **Web Worker**. While the user drags it uses a coarse grid ("draft"); a moment after they stop it re-meshes finely ("final"). The latest request always wins.
+5. The main thread only draws. three.js renders the mesh on demand. Canvas 2D draws the Front and Side views.
+6. **Save to print** meshes at final quality, checks the model, and writes a binary STL.
 
-## Part model
-`{id,name,pts,color,depth,round,z,blend,melt,cut,rx,ry,rz,taper,squash,limb,twin,prof}`
-- Rotation is R = Rz*Ry*Rx (degrees) about the bounding-box centre.
-- `prof {f,b}` is the side profile as a function of y, normalised by depth/2 (ZMAX = 1.8).
-- Sculpt dabs `{t,r,s,c,w|d}` are in world mm, each attached to a part (`scAttach`) so they follow it.
-- Multi-select: `msel`, `mbase`, `multiOn`, `selIds()`, `toggleSel()`; `select()` clears it.
-- Export (`doSave`) uses `window.claude.use` inside Claude, otherwise downloads a plain `.stl`.
+## Folder map
+```
+src/core/     Pure TypeScript. No DOM, no three.js. doc/ geom/ print/
+src/worker/   Mesher worker, protocol, scheduler (latest-wins)
+src/render/   three.js viewport, camera, gizmo, picking
+src/views2d/  Front and Side canvases and the drawing tools
+src/app/      State (signals), commands, performance tier
+src/storage/  IndexedDB autosave, project files
+src/ui/       Design tokens, components, panels, all user-facing text (copy.ts)
+tests/unit/   Vitest
+tests/e2e/    Playwright
+scripts/      bench.ts, extract-icons.ts
+legacy/       The old single-file prototype (reference only)
+```
 
-## Design rules
-Single self-contained file, light on CPU/memory, large touch targets, plain kid-friendly wording. Test at 1180x820, 820x1180, 1024x768, 1280x650 and 1366x768.
+## Data model (`src/core/doc/types.ts`)
+- `Part`: `id, name, kind, outline (Vec2[]), color, depthMm, round, z, blend, melt, cut, rot {x,y,z}, taper, squash, profile?, twinOf?`
+- `SideProfile`: `{ front: number[]; back: number[] }`, 64 samples each, normalised by half the depth, maximum 1.8.
+- `Dab`: a sculpt edit stored in the **part's local space**, so it follows the part when the part moves.
+- `Groove`: a carved line (the Crease tool).
+- Documents carry a `version`. `migrate()` upgrades old saves, including the prototype's `localStorage` key `sketch3d.v2`.
+- Rotation is applied about the part's bounding-box centre, in the order Z then Y then X.
+- **Front view** maps screen (x, y) to world (x, y). **Side view** maps screen (x, y) to world (z, y).
 
-## Known limitations
-- Front/Side outlines ignore part rotation (the pink ghost shows the true shape).
-- Gizmo resize is uniform only and the gizmo is hidden for multi-select.
-- The settings panel edits only the primary selected part.
-- A Tail/arm drawn in Side view is a plain part (no bend/width sliders).
-- Not yet tested on real Chromebook or iPad hardware.
+## Workflow
+- One plan task per branch. Write the failing test, see it fail, implement, see it pass, commit.
+- Keep commits small. Messages like `feat(core): chunked surface-nets mesher`.
+- CI runs lint, typecheck, unit tests, build, size check and e2e. A red CI blocks merging.
+- Pushing to `main` deploys to GitHub Pages after CI passes.
 
-## Ideas
-- One-time toast explaining the gizmo.
-- Check ghost-outline cost on low-power devices.
+## Performance rules
+- The main thread must never run SDF or meshing code.
+- Meshes cross the worker boundary as transferred typed arrays, never copied or cloned.
+- Preallocate and reuse buffers inside `distance()` and the mesher. No allocation in hot loops.
+- Detect a performance tier at startup (`low` / `mid` / `high`) from a short benchmark, and pick voxel sizes from it.
+- Profile with Chrome DevTools at 4–6x CPU throttle before calling a feature done.
+
+## Testing
+- **Unit tests** cover everything in `src/core` and the scheduler: shapes, SDFs, meshing (watertight, manifold edges), STL bytes, history, migration, print checks.
+- **E2E tests** run on `chromium`, `webkit-ipad` (iPad Pro 11) and `chromebook` (1366×768, throttled). They check touch behaviour (no page zoom or scroll), Undo/Redo visibility and size (at least 48 px) at all five viewports, drawing, editing, saving and printing.
+- **Real devices:** run `docs/release-checklist.md` on a real low-end Chromebook and a real iPad in Chrome before each release. Emulators miss memory and GPU problems.
+
+## Platform notes
+- Chrome on iPad is WebKit underneath. Test in WebKit. iOS limits memory per tab.
+- On iPad set `touch-action: none`, `overscroll-behavior: none`, `user-select: none` and `-webkit-touch-callout: none` on canvases, and use a non-zoomable viewport meta tag.
+- Service workers may not register in Chrome on iPad. The app must load and work without one.
+- `navigator.deviceMemory` exists only in Chrome. Use it as a hint, never as the only signal.
+- WebGPU is not available everywhere on school devices. Use WebGL2.
+- STL download on iPad should reach the Files app. Fall back to the Web Share API if it does not.
+
+## Releasing
+1. All CI checks pass on `main`.
+2. Run `docs/release-checklist.md` on real hardware.
+3. Tag the release (`v1.x.x`). GitHub Pages serves `dist/`.
+4. Record anything surprising in `docs/perf-baseline.md`.
+
+## Known limitations and ideas
+- Gizmo resize is uniform only, on purpose, to keep it simple for kids.
+- Ideas for later: undo history saved between sessions, a classroom share link, 3MF export.
