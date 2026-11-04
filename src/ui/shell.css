@@ -330,7 +330,8 @@
   white-space: nowrap;
 }
 
-.mytoys {
+.mytoys,
+.printsheet {
   position: fixed;
   inset: 0;
   z-index: 30;
@@ -382,4 +383,48 @@
   flex: 1;
   min-width: 140px;
   display: grid;
+}
+
+/* ---------- Save to print ---------- */
+.issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.issue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--panel);
+  border: 2px solid var(--danger);
+  border-radius: var(--radius);
+}
+.issue small {
+  color: var(--ink-soft);
+}
+.ready {
+  display: grid;
+  gap: var(--s4);
+  max-width: 560px;
+}
+.sizebadge {
+  position: absolute;
+  left: var(--s3);
+  top: var(--s3);
+  padding: var(--s1) var(--s3);
+  background: rgb(255 255 255 / 92%);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+.sizebadge.warn {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
 }

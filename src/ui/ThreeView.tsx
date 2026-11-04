@@ -6,6 +6,8 @@ import { viewportRef } from '../app/viewportRef';
 import type { DabType } from '../core/doc/types';
 import type { SculptSize, SculptStrength } from '../core/doc/sculpt';
 import { Viewport } from '../render/viewport';
+import { BUILD_MM } from '../core/doc/types';
+import { meshSize } from '../core/print/check';
 import { Button } from './components/Button';
 import { Segmented } from './components/Segmented';
 import { PALETTE } from '../core/doc/partOps';
@@ -67,6 +69,9 @@ export function ThreeView({ store }: { store: Store }) {
   }, [doc, selection, mode]);
 
   const gizmoOn = mode === 'view' && selection.size === 1;
+  // how big the toy is, so the child can see it against the limit
+  const size = shown && shown.mesh.positions.length > 0 ? meshSize(shown.mesh) : null;
+  const tooBig = !!size && Math.max(size.w, size.h, size.d) > BUILD_MM + 0.5;
   const tip = mode === 'sculpt' ? copy.tipSculpt : mode === 'paint' ? copy.tipPaint : gizmoOn ? copy.tipGizmo : copy.tipPick;
 
   return (
@@ -104,6 +109,11 @@ export function ThreeView({ store }: { store: Store }) {
       </div>
       <div class="three">
         <canvas ref={canvasRef} aria-label="3D view of your toy" />
+        {size && (
+          <div class={`sizebadge ${tooBig ? 'warn' : ''}`} data-testid="size" data-toobig={tooBig}>
+            {copy.sizeIs}: {Math.round(size.w)} × {Math.round(size.h)} × {Math.round(size.d)} mm{tooBig ? `. ${copy.sizeTooBig}` : ''}
+          </div>
+        )}
         {lost && (
           <button type="button" class="btn primary lost" onClick={() => viewportRef_.current?.restart()}>
             {copy.viewLost}

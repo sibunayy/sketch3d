@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chunkGrid, mergeMeshes, meshChunk, meshField } from '../../src/core/geom/surfaceNets';
+import { chunkGrid, mergeMeshes, meshChunk, meshField, resetMesherBuffersForTests } from '../../src/core/geom/surfaceNets';
 import type { MeshData } from '../../src/core/geom/surfaceNets';
 import { buildSceneField } from '../../src/core/geom/scene';
 import { SHAPES } from '../../src/core/geom/shapes';
@@ -185,5 +185,26 @@ describe('chunks', () => {
 
   it('chunk vertices stay close to the surface', () => {
     for (const c of chunks) if (c.positions.length) expect(radiusError(c)).toBeLessThan(0.5);
+  });
+});
+
+describe('the mesher after a cold start (small working buffers)', () => {
+  it('joins chunk seams correctly even when its buffers start empty and have to grow', () => {
+    const doc = makeDoc([makePart({ id: 'a', kind: 'circle', outline: SHAPES.circle(-14, 40, 14, 68), depthMm: 28, round: 1 })]);
+    const f = buildSceneField(doc, { voxelMm: 0.5 });
+    resetMesherBuffersForTests();
+    const whole = meshField(f, { voxelMm: 0.5 });
+    resetMesherBuffersForTests(); // empty again: the chunks below must grow the buffers themselves
+    const chunks = chunkGrid(f.bounds, 24, 0.5).map((k) => meshChunk(f, k, 0.5));
+    const merged = mergeMeshes(chunks);
+    expect(merged.positions.length).toBe(whole.positions.length);
+    expect(merged.indices.length).toBe(whole.indices.length);
+    expect(edgeManifold(merged)).toMatchObject({ ok: true, open: 0, tangled: 0 });
+  });
+
+  it('a single big mesh from empty buffers is also closed', () => {
+    const f = buildSceneField(makeDoc([ball('a')]), { voxelMm: 0.3 });
+    resetMesherBuffersForTests();
+    expect(edgeManifold(meshField(f, { voxelMm: 0.3 }))).toMatchObject({ ok: true });
   });
 });

@@ -1,3 +1,5 @@
+import { PRINT_MESSAGES } from '../core/print/messages';
+
 /**
  * Every word the child sees lives here, so the reading level and tone can be checked in one place.
  * Rules: about grade 3 reading level, sentence case, buttons start with a verb, no jargon,
@@ -125,6 +127,39 @@ export const copy = {
   toastFileSaved: 'Saved a file. Keep it somewhere safe.',
   toastOpened: 'Opened your toy.',
   toastNewToy: 'Started a new toy.',
+
+  // Save to print
+  btnShowMe: 'Show me',
+  btnMakeFit: 'Make it fit',
+  btnMeltThem: 'Melt them together',
+  btnStartDrawing: 'Start drawing',
+  btnAddShape: 'Add a shape',
+  btnCheckAgain: 'Check again',
+  btnDownloadStl: 'Download the STL',
+  printChecking: 'Checking your toy…',
+  printReady: 'Your toy is ready to print.',
+  printProblems: 'Fix these first, then try again.',
+  printSaved: 'Saved sketch3d-toy.stl. Open it in your slicer.',
+  printSaveFailed: 'The file could not be made. Try again.',
+  labelFlatBase: 'Flat bottom, so it does not roll',
+  flatYes: 'Yes',
+  flatNo: 'No',
+  sizeIs: 'Size',
+  sizeTooBig: 'Too big. The most is 100 mm.',
+  sizeFits: 'Fits (the most is 100 mm)',
+  toastFitted: 'Made it smaller to fit.',
+  printEmptyMessage: PRINT_MESSAGES.empty.message,
+  printEmptyFix: PRINT_MESSAGES.empty.fix,
+  printOnlyCutsMessage: PRINT_MESSAGES['only-cuts'].message,
+  printOnlyCutsFix: PRINT_MESSAGES['only-cuts'].fix,
+  printTooBigMessage: PRINT_MESSAGES['too-big'].message,
+  printTooBigFix: PRINT_MESSAGES['too-big'].fix,
+  printTooThinMessage: PRINT_MESSAGES['too-thin'].message,
+  printTooThinFix: PRINT_MESSAGES['too-thin'].fix,
+  printFloatingMessage: PRINT_MESSAGES.floating.message,
+  printFloatingFix: PRINT_MESSAGES.floating.fix,
+  printNotWatertightMessage: PRINT_MESSAGES['not-watertight'].message,
+  printNotWatertightFix: PRINT_MESSAGES['not-watertight'].fix,
 
   // views
   tabFront: 'Front',

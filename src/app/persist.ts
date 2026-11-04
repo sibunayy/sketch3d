@@ -7,23 +7,13 @@ import type { ProjectMeta } from '../storage/db';
 import { exportProjectFile, importLegacyOnce, importProjectFile } from '../storage/projectFile';
 import { copy } from '../ui/copy';
 import type { Store } from './state';
+import { saveBlob } from './download';
 import { viewportRef } from './viewportRef';
 
 const newId = () => `t${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 /** Which toy is open, and how it is being saved. */
 export const currentToyId = signal<string>(newId());
-
-function download(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
 
 /**
  * Brings the last toy back, then keeps saving it as it changes. If the browser will not let us store
@@ -111,8 +101,7 @@ export async function startPersistence(store: Store) {
     },
 
     saveFile(): void {
-      download(exportProjectFile(store.doc.value), 'my-toy.sketch3d.json');
-      store.toast(copy.toastFileSaved);
+      void saveBlob(exportProjectFile(store.doc.value), 'my-toy.sketch3d.json').then(() => store.toast(copy.toastFileSaved));
     },
 
     async openFile(file: File): Promise<void> {

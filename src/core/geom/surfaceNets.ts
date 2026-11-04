@@ -268,11 +268,11 @@ function meshBlock(field: SceneField, voxel: number, lx: number, ly: number, lz:
       sx = sy = sz = 0.5;
       cnt = 1;
     }
-    if (posBuf.length < (nv + 1) * 3) {
-      posBuf = grow(posBuf, (nv + 1) * 3);
-      norBuf = grow(norBuf, (nv + 1) * 3);
-      keyBuf = grow(keyBuf, nv + 1);
-    }
+    // each buffer grows when it is the one that is full: they start at different sizes, so one running
+    // out says nothing about the others (writes past the end of a typed array are silently lost)
+    if (posBuf.length < (nv + 1) * 3) posBuf = grow(posBuf, (nv + 1) * 3);
+    if (norBuf.length < (nv + 1) * 3) norBuf = grow(norBuf, (nv + 1) * 3);
+    if (keyBuf.length < nv + 1) keyBuf = grow(keyBuf, nv + 1);
     const gi = lx - 1 + i, gj = ly - 1 + j, gk = lz - 1 + k;
     posBuf[nv * 3] = (gi + sx / cnt) * voxel;
     posBuf[nv * 3 + 1] = (gj + sy / cnt) * voxel;
@@ -438,4 +438,16 @@ export function mergeMeshes(chunks: readonly MeshData[]): MeshData {
     partIds: partIds.slice(0, outV),
     cellKeys: keys?.slice(0, outV),
   };
+}
+
+/** Empties the buffers the mesher reuses, so a test can start from a "cold" mesher. */
+export function resetMesherBuffersForTests(): void {
+  samples = new Float32Array(0);
+  cellVertex = new Int32Array(0);
+  posBuf = new Float32Array(0);
+  norBuf = new Float32Array(0);
+  keyBuf = new Float64Array(0);
+  idxBuf = new Uint32Array(0);
+  pointState = new Uint8Array(0);
+  blockStack = new Int32Array(6 * 4096);
 }

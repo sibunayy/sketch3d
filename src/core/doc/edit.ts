@@ -196,3 +196,21 @@ export function applyResize(doc: Doc, id: string, k: number, from: PartSnapshot)
   p.depthMm = clamp(r1(from.depthMm * k), LIMITS.depthMm[0], LIMITS.depthMm[1]);
   void id;
 }
+
+/**
+ * Makes the whole toy `k` times as big or small (sizes, places, thickness, melt distance, sculpting and
+ * creases) so it keeps its shape. Used by "Make it fit".
+ */
+export function scaleToy(doc: Doc, k: number): void {
+  for (const p of doc.parts) {
+    p.outline = p.outline.map(([x, y]): [number, number] => [r1(x * k), r1(y * k)]);
+    p.z = r1(p.z * k);
+    p.depthMm = clamp(r1(p.depthMm * k), LIMITS.depthMm[0], LIMITS.depthMm[1]);
+    p.blend = clamp(r1(p.blend * k), LIMITS.blend[0], LIMITS.blend[1]);
+  }
+  for (const d of doc.dabs) d.radius = clamp(d.radius * k, LIMITS.dabRadius[0], LIMITS.dabRadius[1]);
+  for (const g of doc.grooves) {
+    g.points = g.points.map(([x, y, z]): [number, number, number] => [x * k, y * k, z * k]);
+    g.radius = clamp(g.radius * k, LIMITS.grooveRadius[0], LIMITS.grooveRadius[1]);
+  }
+}

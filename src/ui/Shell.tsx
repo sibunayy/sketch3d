@@ -7,6 +7,7 @@ import { Sheet } from './components/Sheet';
 import { Toasts } from './components/Toast';
 import { Inspector } from './panels/Inspector';
 import { MyToys } from './panels/MyToys';
+import { PrintSheet } from './panels/PrintSheet';
 import type { Persistence } from '../app/persist';
 import { copy } from './copy';
 import { DrawCanvas } from './DrawCanvas';
@@ -66,6 +67,7 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
   const view = store.view.value;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toysOpen, setToysOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const status = persistence?.status.value ?? 'saving';
   const showing3d = view === '3d';
 
@@ -80,7 +82,7 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
         </span>
         {persistence && <Button label={copy.btnMyToys} icon="views" onClick={() => setToysOpen(true)} />}
         {persistence && <Button label={copy.btnSaveFile} icon="save" onClick={() => persistence.saveFile()} />}
-        <Button label={copy.btnSaveToPrint} icon="savebig" variant="primary" onClick={() => store.toast(copy.working)} />
+        <Button label={copy.btnSaveToPrint} icon="savebig" variant="primary" onClick={() => setPrintOpen(true)} />
       </header>
 
       <nav class="rail" aria-label={copy.labelTools}>
@@ -140,6 +142,7 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
         <Inspector store={store} />
       </Sheet>
 
+      {printOpen && <PrintSheet store={store} onClose={() => setPrintOpen(false)} />}
       {toysOpen && persistence && <MyToys persistence={persistence} onClose={() => setToysOpen(false)} />}
 
       <Toasts store={store} />
