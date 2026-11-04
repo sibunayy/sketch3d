@@ -51,8 +51,11 @@ To run it locally, download `index.html` and open it in a browser. There is noth
 ## Project layout
 
 ```
-index.html   The whole app (HTML, CSS, JavaScript and three.js in one file)
-README.md    This file
+index.html        The built app (HTML, CSS, JavaScript and three.js in one file)
+src/              Source files that build into index.html
+build.mjs         Build script (npm install, then node build.mjs)
+DEVELOPMENT.md    Developer notes
+README.md         This file
 ```
 
 ## Credits
