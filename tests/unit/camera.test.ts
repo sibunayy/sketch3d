@@ -110,12 +110,13 @@ describe('FrameScheduler', () => {
 
   it('a request made while drawing schedules one more frame, not a loop', () => {
     const frames: (() => void)[] = [];
-    let s: FrameScheduler;
+    const holder: { s?: FrameScheduler } = {};
     let calls = 0;
     const draw = () => {
-      if (calls++ === 0) s.request();
+      if (calls++ === 0) holder.s?.request();
     };
-    s = new FrameScheduler((cb) => frames.push(cb), draw);
+    const s = new FrameScheduler((cb) => frames.push(cb), draw);
+    holder.s = s;
     s.request();
     frames.shift()!();
     expect(frames).toHaveLength(1);
