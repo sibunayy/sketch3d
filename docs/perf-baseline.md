@@ -66,7 +66,7 @@ For comparison, the first run of this benchmark (before the speed-up work) had e
 ## Other measurements
 
 - **Speed test for choosing a tier:** a 50 ms test in the worker scores about 11.5 ms per standard mesh on this desktop. The tier limits are 23 ms (high) and 52 ms (mid), about 2 and 4.5 times slower than this desktop, so each tier's slow-down above sits inside its own range. These are a first guess and need checking on real hardware.
-- **Bundle size so far:** the mesher worker is about 22 KB (about 9 KB gzipped) and the page code for it about 8 KB (3.3 KB gzipped). three.js is not in yet. The limit is 500 KB gzipped.
+- **Bundle size:** the mesher worker is about 22 KB (about 9 KB gzipped). three.js with the viewport and the maths core is about 155 KB gzipped (measured in Task 8 with only the parts we import). Together about 165 KB of the 500 KB limit, before the drawing screens and interface.
 - **Worker in browsers:** the real worker is tested in Chromium and in WebKit (iPad Pro 11 emulation). A burst of 20 quick requests ends on the last one, and the picture never steps back to an older one.
 
 ## Still open
