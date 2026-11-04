@@ -39,15 +39,15 @@ async function meshDepth(page: Page, atLeast = 0) {
 
 test('a new circle is a sphere and the thickness slider reads its diameter', async ({ page }) => {
   await placeBall(page);
-  const slider = page.locator('.inspector').getByLabel('How thick?');
+  const slider = page.locator('.contextbar').getByLabel('How thick?');
   await expect(slider).toHaveValue('28');
-  await expect(page.locator('.inspector').locator('label', { hasText: 'How thick?' }).locator('strong')).toHaveText('28 mm');
+  await expect(page.locator('.contextbar').locator('label', { hasText: 'How thick?' }).locator('strong')).toHaveText('28 mm');
   expect((await meshDepth(page, 20))).toBeGreaterThan(24); // about 28 mm front to back, like its width
 });
 
 test('dragging the thickness slider updates the 3D mesh live and makes one undo step on release', async ({ page }) => {
   await placeBall(page);
-  const slider = page.locator('.inspector').getByLabel('How thick?');
+  const slider = page.locator('.contextbar').getByLabel('How thick?');
   const box = (await slider.boundingBox())!;
   const at = (v: number) => box.x + 24 + ((v - 2) / 78) * (box.width - 48);
   const y = box.y + box.height / 2;
@@ -75,13 +75,13 @@ test('with several parts picked, a change applies to all of them in one step, an
   await page.evaluate(() => {
     // the second ball is already the picked one; thicken it a little through the real controls instead of the data
   });
-  await page.locator('.inspector').getByLabel('How thick?').fill('50');
+  await page.locator('.contextbar').getByLabel('How thick?').fill('50');
   expect(await depths(page)).toEqual([28, 50]);
 
   await page.getByRole('button', { name: 'Pick several' }).click();
   await page.getByRole('button', { name: 'Circle 1' }).click();
   expect(await page.evaluate(() => window.__sketch3d.app.selection.value.size)).toBe(2);
-  await expect(page.locator('.inspector').locator('label', { hasText: 'How thick?' }).locator('strong')).toHaveText('Mixed');
+  await expect(page.locator('.contextbar').locator('label', { hasText: 'How thick?' }).locator('strong')).toHaveText('Mixed');
 
   await page.getByRole('button', { name: 'Square' }).click();
   expect(await page.evaluate(() => window.__sketch3d.app.doc.value.parts.map((p) => p.round))).toEqual([0.04, 0.04]);
@@ -91,16 +91,17 @@ test('with several parts picked, a change applies to all of them in one step, an
 
 test('tapping nothing hides the settings and shows the parts list', async ({ page }) => {
   await placeBall(page);
-  await expect(page.locator('.inspector').getByLabel('How thick?')).toBeVisible();
+  await expect(page.locator('.contextbar').getByLabel('How thick?')).toBeVisible();
   await page.getByTestId('tool-select').click();
   const b = (await page.getByTestId('canvas-front').boundingBox())!;
   await page.mouse.click(b.x + 20, b.y + 20);
-  await expect(page.locator('.inspector').getByLabel('How thick?')).toBeHidden();
+  await expect(page.locator('.contextbar').getByLabel('How thick?')).toBeHidden();
   await expect(page.getByText('Tap a part to change it.')).toBeVisible();
 });
 
 test('colour, copy and delete work, and delete can be undone', async ({ page }) => {
   await placeBall(page);
+  await page.getByRole('button', { name: 'Colour', exact: true }).click(); // the Colour tab of the context bar
   await page.getByRole('button', { name: 'Colour 6' }).click();
   await page.getByRole('button', { name: 'Make a copy' }).click();
   expect(await page.evaluate(() => window.__sketch3d.app.doc.value.parts.length)).toBe(2);
@@ -118,4 +119,41 @@ test('on a narrow screen the settings open in a sheet', async ({ page }) => {
   await expect(slider).toBeVisible();
   const box = (await slider.boundingBox())!;
   expect(box.y + box.height).toBeLessThanOrEqual(1180);
+});
+
+test('the settings sit in a bar under the toy, one group at a time, and the shape group shows first', async ({ page }) => {
+  await placeBall(page);
+  const bar = page.locator('.contextbar');
+  const canvas = (await page.getByTestId('canvas-front').boundingBox())!;
+  const barBox = (await bar.boundingBox())!;
+  expect(barBox.y).toBeGreaterThanOrEqual(canvas.y + canvas.height - 1); // under the drawing, not off to the side
+  expect(barBox.width).toBeGreaterThan(900); // the whole width, so it is hard to miss
+
+  await expect(bar.getByLabel('How thick?')).toBeVisible();
+  await expect(bar.getByLabel('Spin like a wheel')).toHaveCount(0);
+  await bar.getByRole('button', { name: 'Turn', exact: true }).click();
+  await expect(bar.getByLabel('Spin like a wheel')).toBeVisible();
+  await expect(bar.getByLabel('Turn left or right')).toBeVisible();
+  await expect(bar.getByLabel('Nod up or down')).toBeVisible();
+  await bar.getByRole('button', { name: 'Stretch' }).click();
+  await expect(bar.getByLabel('Squash and stretch')).toBeVisible();
+  await bar.getByRole('button', { name: 'Melt' }).click();
+  await expect(bar.getByRole('button', { name: 'A little' })).toBeVisible();
+});
+
+test('with nothing picked the bar says what to do and the group buttons are switched off', async ({ page }) => {
+  const bar = page.locator('.contextbar');
+  await expect(bar.getByText('Tap a part to change it.')).toBeVisible();
+  await expect(bar.getByRole('button', { name: 'Shape' })).toBeDisabled();
+});
+
+test('the bar keeps the same height whichever group is open, so the toy does not jump', async ({ page }) => {
+  await placeBall(page);
+  const bar = page.locator('.contextbar');
+  const heights: number[] = [];
+  for (const name of ['Shape', 'Stretch', 'Turn', 'Melt', 'Colour']) {
+    await bar.getByRole('button', { name, exact: true }).click();
+    heights.push((await bar.boundingBox())!.height);
+  }
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThanOrEqual(2);
 });

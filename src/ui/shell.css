@@ -150,7 +150,7 @@
   z-index: 5;
 }
 
-.inspector {
+.contextwrap {
   display: none;
 }
 
@@ -168,9 +168,9 @@
 /* wide landscape: everything side by side */
 @media (min-width: 1100px) and (min-height: 600px) and (orientation: landscape) {
   .app {
-    grid-template-rows: auto 1fr;
-    grid-template-columns: 104px 1fr 340px;
-    grid-template-areas: 'top top top' 'rail stage inspector';
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 104px 1fr;
+    grid-template-areas: 'top top' 'rail stage' 'rail context';
   }
   .rail {
     flex-direction: column;
@@ -190,13 +190,11 @@
   .pane-3d {
     border-left: 2px solid var(--border);
   }
-  .inspector {
-    grid-area: inspector;
+  .contextwrap {
+    grid-area: context;
     display: block;
-    padding: var(--s4);
     background: var(--panel);
-    border-left: 2px solid var(--border);
-    overflow: auto;
+    border-top: 2px solid var(--border);
   }
   .switch {
     display: none;
@@ -476,4 +474,94 @@
     overflow: hidden;
     clip-path: inset(50%);
   }
+}
+
+/* ---------- context bar (wide screens): the picked part's settings, right under the toy ---------- */
+.contextbar {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s2) var(--s4) var(--s4);
+}
+.partsstrip {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: var(--target);
+}
+.partsstrip ul {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0 0 2px;
+  list-style: none;
+  overflow-x: auto;
+}
+.partsstrip .layer {
+  white-space: nowrap;
+}
+.ctx-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+.ctx-tab {
+  min-height: var(--target);
+  padding: 0 var(--s4);
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ctx-tab[aria-pressed='true'] {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.ctx-tab:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ctx-name {
+  font-weight: 700;
+  padding: 0 var(--s2);
+}
+.ctx-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: var(--s6);
+  height: 92px; /* the same height for every group, so the toy never jumps */
+  padding: var(--s2) var(--s1);
+}
+.ctx-options .segmented button {
+  padding: 0 var(--s3);
+  white-space: nowrap;
+}
+.ctx-options .field {
+  gap: var(--s1);
+}
+.ctx-options .swatches {
+  flex-wrap: nowrap;
+}
+.ctx-options .colour strong {
+  display: none; /* the Colour button above already says what this is */
+}
+.ctx-options .slider {
+  flex: 1 1 200px;
+  max-width: 340px;
+}
+.ctx-options .field {
+  flex: 0 1 auto;
+}
+.ctx-options .hint {
+  margin: 0;
+  align-self: center;
 }

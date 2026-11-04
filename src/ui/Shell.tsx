@@ -5,6 +5,7 @@ import { Button } from './components/Button';
 import { IconButton } from './components/IconButton';
 import { Sheet } from './components/Sheet';
 import { Toasts } from './components/Toast';
+import { ContextBar } from './panels/ContextBar';
 import { Inspector } from './panels/Inspector';
 import { MyToys } from './panels/MyToys';
 import { PrintSheet } from './panels/PrintSheet';
@@ -124,9 +125,9 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
         </div>
       </main>
 
-      <aside class="inspector" aria-label="Part settings">
-        <Inspector store={store} />
-      </aside>
+      <div class="contextwrap">
+        <ContextBar store={store} />
+      </div>
 
       <div class="switch">
         <Segmented<'draw' | '3d'>
