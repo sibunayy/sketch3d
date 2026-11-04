@@ -6,6 +6,8 @@ Built for primary-school students (about ages 9–11) and designed to run on low
 
 **Try it:** https://sibunayy.github.io/sketch3d/
 
+> **Status: rebuild in progress.** The app is being rebuilt as a fast, tested TypeScript app (see `docs/superpowers/plans/`). The original prototype now lives in `legacy/` and still works. The live link keeps serving the prototype until the rebuild has its own deploy step (Task 16), so do not point GitHub Pages at this branch before then.
+
 ## What you can do
 
 - **Draw and shape:** draw an outline, or start from ready-made shapes (circle, box, star, heart, egg, capsule, triangle, drop, moon).
@@ -25,7 +27,16 @@ Built for primary-school students (about ages 9–11) and designed to run on low
 
 Open the link above in any modern browser (Chrome, Edge, Safari, Firefox). Everything runs on the student's own device; nothing is uploaded.
 
-To run it locally, download `index.html` and open it in a browser. There is nothing to build or install.
+To run the **prototype** locally, open `legacy/index.html` in a browser. There is nothing to build or install.
+
+To run the **rebuild** locally (needs Node.js 22 or later):
+
+```
+npm install
+npm run dev
+```
+
+See `DEVELOPMENT.md` for all commands.
 
 ## Keyboard shortcuts
 
@@ -36,10 +47,14 @@ To run it locally, download `index.html` and open it in a browser. There is noth
 
 ## How it works
 
+The prototype (in `legacy/`):
+
 - One self-contained HTML file (about 1 MB) with three.js (r128) included, so it works offline and on locked-down school networks.
 - Parts are drawn as 2D outlines, then built into smooth 3D shapes using signed distance fields (SDF), which is what lets parts melt together.
 - Part colours, shape and sculpt edits are stored per part, so Front, Side and 3D views always agree.
 - Export writes a standard binary STL file.
+
+The rebuild keeps the same ideas, with the maths in a pure TypeScript core that runs in a Web Worker. See `DEVELOPMENT.md`.
 
 ## Known limitations
 
@@ -51,11 +66,15 @@ To run it locally, download `index.html` and open it in a browser. There is noth
 ## Project layout
 
 ```
-index.html        The built app (HTML, CSS, JavaScript and three.js in one file)
-src/              Source files that build into index.html
-build.mjs         Build script (npm install, then node build.mjs)
-DEVELOPMENT.md    Developer notes
-README.md         This file
+src/                    The rebuild (TypeScript, Preact)
+tests/                  Unit tests (Vitest) and browser tests (Playwright)
+scripts/                Benchmark and helper scripts
+legacy/                 The original prototype (index.html, src/, build.mjs). Reference only
+docs/                   Plans and notes
+CLAUDE.md               Rules for AI helpers working on this project
+DEVELOPMENT.md          Developer guide for the rebuild
+DEVELOPMENT-prototype.md  Notes on the original prototype
+README.md               This file
 ```
 
 ## Credits

@@ -1,0 +1,8 @@
+[
+  {
+    "name": "All JavaScript (main + worker), gzipped",
+    "path": "dist/assets/*.js",
+    "gzip": true,
+    "limit": "500 kB"
+  }
+]
