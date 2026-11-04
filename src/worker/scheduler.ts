@@ -7,6 +7,11 @@ import type { MesherRequest, MesherWorker, Quality, WorkerOut } from './protocol
 /** After this long without a new edit, the finer "final" mesh is made. */
 export const FINAL_DELAY_MS = 150;
 
+/** How long the worker should take for each kind of mesh (a little under the 40 ms and 400 ms budgets). */
+export const TARGET_MS: Record<Quality, number> = { draft: 35, final: 350 };
+/** The grid is never made more than this many times coarser than the tier's grid. */
+export const MAX_SCALE = 3;
+
 interface Job {
   quality: Quality;
   /** Which edit this job is for. A draft and its final share one edit. */
@@ -22,6 +27,8 @@ type MeshListener = (mesh: MeshData, quality: Quality) => void;
  * - Edits get a quick coarse "draft" at once, and a finer "final" after a short pause.
  * - A result is shown only if it is for the latest edit and newer than what is already on screen,
  *   so a slow old result can never replace a newer one.
+ * - It watches how long each mesh took. If meshing is slow on this device or for this toy, the next mesh
+ *   uses a coarser grid, and it goes back to the tier's grid when things are quick again.
  */
 export class MeshScheduler {
   private worker: MesherWorker | null;
@@ -38,6 +45,8 @@ export class MeshScheduler {
   private readonly jobs = new Map<number, Job>(); // running and waiting jobs only
   private timer: ReturnType<typeof setTimeout> | null = null;
   private latestDoc: Doc | null = null;
+  /** How many times coarser than the tier's grid each kind of mesh currently is. 1 means the tier grid. */
+  private readonly scale: Record<Quality, number> = { draft: 1, final: 1 };
 
   constructor(workerFactory: () => MesherWorker, tier: PerfTier, opts: { finalDelayMs?: number } = {}) {
     this.tier = tier;
@@ -77,6 +86,13 @@ export class MeshScheduler {
 
   setTier(tier: PerfTier): void {
     this.tier = tier;
+    this.scale.draft = 1;
+    this.scale.final = 1;
+  }
+
+  /** How much coarser than the tier's grid meshes are now (1 = not coarser). For tests and diagnostics. */
+  get qualityScale(): { draft: number; final: number } {
+    return { ...this.scale };
   }
 
   /** True while a mesh is being made, waiting, or about to be made. Used to show progress. */
@@ -108,7 +124,7 @@ export class MeshScheduler {
     const worker = this.worker;
     if (!worker) return;
     const jobId = this.nextJobId++;
-    const request: MesherRequest = { jobId, doc, voxelMm: voxelFor(this.tier, quality), quality };
+    const request: MesherRequest = { jobId, doc, voxelMm: voxelFor(this.tier, quality) * this.scale[quality], quality };
     if (this.queued) this.jobs.delete(this.queued.jobId); // the waiting job is replaced
     this.jobs.set(jobId, { quality, edit: this.edit });
     if (this.runningId === 0) {
@@ -122,6 +138,17 @@ export class MeshScheduler {
   private send(request: MesherRequest): void {
     this.runningId = request.jobId;
     this.worker?.postMessage({ type: 'mesh', request });
+  }
+
+  /** Nudges the grid size so meshes take about TARGET_MS. Slow: coarser at once. Quick: finer again, slowly. */
+  private adapt(quality: Quality, ms: number): void {
+    if (!Number.isFinite(ms) || ms <= 0) return;
+    const ratio = ms / TARGET_MS[quality];
+    let s = this.scale[quality];
+    // meshing time grows with the cube of how fine the grid is, hence the cube root
+    if (ratio > 1.25) s *= Math.min(1.6, Math.cbrt(ratio));
+    else if (ratio < 0.7 && s > 1) s /= Math.min(1.25, Math.cbrt(1 / ratio));
+    this.scale[quality] = Math.min(MAX_SCALE, Math.max(1, s));
   }
 
   private finish(jobId: number): void {
@@ -139,6 +166,7 @@ export class MeshScheduler {
       case 'mesh': {
         const { jobId, mesh } = msg.response;
         const job = this.jobs.get(jobId);
+        if (job) this.adapt(job.quality, msg.response.ms); // even an old result tells us how long meshing takes
         if (job && job.edit === this.edit && jobId > this.lastShownJobId) {
           this.lastShownJobId = jobId;
           for (const cb of this.listeners.slice()) cb(mesh, job.quality);

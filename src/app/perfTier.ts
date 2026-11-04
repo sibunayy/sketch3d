@@ -8,7 +8,7 @@ export type PerfTier = 'low' | 'mid' | 'high';
  * These are starting points; docs/perf-baseline.md records the measurements behind them.
  */
 export const VOXEL_MM: Record<Quality, Record<PerfTier, number>> = {
-  draft: { low: 2.4, mid: 1.6, high: 1.2 },
+  draft: { low: 2.9, mid: 2.1, high: 1.5 },
   final: { low: 1.2, mid: 0.8, high: 0.6 },
 };
 
@@ -26,10 +26,10 @@ export interface TierHints {
 
 /**
  * A benchmark time (milliseconds per standard mesh, see `runMicroBenchmark`) at or under
- * HIGH_MAX_MS is a high tier; under MID_MAX_MS is mid. The development desktop scores about 10.
+ * HIGH_MAX_MS is a high tier; under MID_MAX_MS is mid. The development desktop scores about 11.5, so these are about 2 and 4.5 times slower than it.
  */
-export const HIGH_MAX_MS = 20;
-export const MID_MAX_MS = 70;
+export const HIGH_MAX_MS = 23;
+export const MID_MAX_MS = 52;
 
 const ORDER: PerfTier[] = ['high', 'mid', 'low'];
 

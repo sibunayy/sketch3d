@@ -67,6 +67,25 @@ export class SpatialIndex {
     });
   }
 
+  /** True if any item might reach into the box (it may say yes for an item that only reaches a neighbouring part of a cell). */
+  anyIn(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): boolean {
+    const { min, max } = this.bounds;
+    if (x1 < min[0] || x0 > max[0] || y1 < min[1] || y0 > max[1] || z1 < min[2] || z0 > max[2]) return false;
+    const lo = (v: number, a: number, n: number) => Math.min(Math.max(Math.floor((v - min[a]) * this.inv), 0), n - 1);
+    const i0 = lo(x0, 0, this.nx), i1 = lo(x1, 0, this.nx);
+    const j0 = lo(y0, 1, this.ny), j1 = lo(y1, 1, this.ny);
+    const k0 = lo(z0, 2, this.nz), k1 = lo(z1, 2, this.nz);
+    for (let k = k0; k <= k1; k++) {
+      for (let j = j0; j <= j1; j++) {
+        for (let i = i0; i <= i1; i++) {
+          const c = i + this.nx * (j + this.ny * k);
+          if (this.starts[c + 1] > this.starts[c]) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   /** The cell holding this point, or -1 if it is outside every item's box. */
   cellOf(x: number, y: number, z: number): number {
     const { min, max } = this.bounds;

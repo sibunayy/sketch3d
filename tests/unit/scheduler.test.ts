@@ -23,8 +23,8 @@ class FakeWorker implements MesherWorker {
   get supersedes() {
     return this.posted.flatMap((m) => (m.type === 'supersede' ? [m.jobId] : []));
   }
-  reply(jobId: number) {
-    this.onmessage?.({ data: { type: 'mesh', response: { jobId, mesh: meshFor(jobId), ms: 5 } } });
+  reply(jobId: number, ms = 5) {
+    this.onmessage?.({ data: { type: 'mesh', response: { jobId, mesh: meshFor(jobId), ms } } });
   }
   say(m: WorkerOut) {
     this.onmessage?.({ data: m });
@@ -200,6 +200,83 @@ describe('MeshScheduler: draft now, final after a pause', () => {
     scheduler.request(doc(2), 'draft'); // new edit
     worker.reply(1); // the old final limps in
     expect(got).toEqual([]);
+  });
+});
+
+describe('MeshScheduler: adapts the grid to how long meshing takes', () => {
+  const lastVoxel = (w: FakeWorker, q: 'draft' | 'final') => w.meshJobs.filter((j) => j.quality === q).pop()!.voxelMm;
+
+  it('uses the tier grid at first', () => {
+    const { worker, scheduler } = setup('mid');
+    scheduler.request(doc(1), 'draft');
+    expect(worker.meshJobs[0].voxelMm).toBe(voxelFor('mid', 'draft'));
+    expect(scheduler.qualityScale.draft).toBe(1);
+  });
+
+  it('a slow draft makes the next draft coarser', () => {
+    const { worker, scheduler } = setup('mid');
+    scheduler.request(doc(1), 'draft');
+    worker.reply(1, 140); // four times the 35 ms aim
+    scheduler.request(doc(2), 'draft');
+    expect(lastVoxel(worker, 'draft')).toBeGreaterThan(voxelFor('mid', 'draft') * 1.2);
+  });
+
+  it('keeps getting coarser while drafts stay slow, but never more than 3 times coarser', () => {
+    const { worker, scheduler } = setup('mid');
+    for (let i = 0; i < 40; i++) {
+      scheduler.request(doc(i + 1), 'draft');
+      const id = worker.meshJobs[worker.meshJobs.length - 1].jobId;
+      worker.reply(id, 5000);
+    }
+    expect(scheduler.qualityScale.draft).toBe(3);
+    expect(lastVoxel(worker, 'draft')).toBeCloseTo(voxelFor('mid', 'draft') * 3, 6);
+  });
+
+  it('goes back towards the tier grid when drafts are quick, but never finer than it', () => {
+    const { worker, scheduler } = setup('mid');
+    scheduler.request(doc(1), 'draft');
+    worker.reply(1, 400);
+    const coarse = scheduler.qualityScale.draft;
+    expect(coarse).toBeGreaterThan(1.3);
+    for (let i = 0; i < 30; i++) {
+      scheduler.request(doc(i + 2), 'draft');
+      worker.reply(worker.meshJobs[worker.meshJobs.length - 1].jobId, 3);
+    }
+    expect(scheduler.qualityScale.draft).toBe(1);
+    expect(lastVoxel(worker, 'draft')).toBe(voxelFor('mid', 'draft'));
+  });
+
+  it('leaves a draft that is a little over alone (no flip-flopping)', () => {
+    const { worker, scheduler } = setup('mid');
+    scheduler.request(doc(1), 'draft');
+    worker.reply(1, 38);
+    expect(scheduler.qualityScale.draft).toBe(1);
+  });
+
+  it('final meshes adapt on their own scale', () => {
+    const { worker, scheduler } = setup('mid');
+    scheduler.request(doc(1), 'final');
+    vi.advanceTimersByTime(150);
+    const finalJob = worker.meshJobs[0];
+    worker.reply(finalJob.jobId, 1400); // four times the 350 ms aim
+    expect(scheduler.qualityScale.final).toBeGreaterThan(1.3);
+    expect(scheduler.qualityScale.draft).toBe(1);
+  });
+
+  it('still learns from a result that is too old to show', () => {
+    const { worker, scheduler, got } = setup('mid');
+    scheduler.request(doc(1), 'draft');
+    scheduler.request(doc(2), 'draft'); // job 1 is now stale
+    worker.reply(1, 300);
+    expect(got).toEqual([]);
+    expect(scheduler.qualityScale.draft).toBeGreaterThan(1.3);
+  });
+
+  it('ignores nonsense timings', () => {
+    const { worker, scheduler } = setup('mid');
+    scheduler.request(doc(1), 'draft');
+    worker.reply(1, NaN);
+    expect(scheduler.qualityScale.draft).toBe(1);
   });
 });
 

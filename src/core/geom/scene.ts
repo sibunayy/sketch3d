@@ -5,7 +5,6 @@ import type { Box3 } from './bounds';
 import { buildPartField } from './sdf';
 import type { OutlineCache, PartField } from './sdf';
 import { SpatialIndex } from './spatial';
-import { clamp } from './vec';
 
 /** The whole toy as one signed distance function (negative inside, millimetres). */
 export interface SceneField {
@@ -18,14 +17,21 @@ export interface SceneField {
   sample(x: number, y: number, z: number): number;
   /** Index (in `doc.parts`) of the nearest solid part, for colouring and picking. -1 if none. */
   partAt(x: number, y: number, z: number): number;
+  /**
+   * Is the whole ball of the given radius around (x, y, z) certainly empty or certainly solid?
+   * If the result is more than `radius` in size, every point in the ball has the sign of the result
+   * (negative: solid, positive: empty). Otherwise the answer is "can't tell" (0 or a small number).
+   * The mesher uses this to skip blocks that cannot hold any surface.
+   */
+  probe?(x: number, y: number, z: number, radius: number): number;
 }
 
 export interface SceneOptions {
   /** Build only these parts (by id). Used to look at one part on its own. */
   onlyParts?: ReadonlySet<string>;
-  /** Size of the mesh grid the field will be sampled on, mm. Sets blend margins and smoothing reach. */
+  /** Size of the mesh grid the field will be sampled on, mm. Sets how far parts reach and how the smooth brush looks around. */
   voxelMm?: number;
-  /** Cell size of each part's outline grid, mm. */
+  /** Cell size of each part's outline grid, mm (default 0.75). */
   cell?: number;
   cache?: OutlineCache;
 }
@@ -55,6 +61,11 @@ function mirrorPart(src: Part, twin: Part): Part {
   };
 }
 
+/** Size of the cells in each part's outline grid, millimetres. */
+const OUTLINE_CELL_MM = 0.75;
+/** How far beyond its outline each grid stays accurate (on top of the blend distance). Covers coarse draft meshes too. */
+const OUTLINE_MARGIN_MM = 12;
+
 const PULL = 0;
 const PUSH = 1;
 const GRAB = 2;
@@ -64,7 +75,8 @@ const wFall = (t: number): number => (t >= 1 ? 0 : (1 - t * t) * (1 - t * t));
 
 export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
   const voxel = opts.voxelMm ?? 1;
-  const cell = opts.cell ?? clamp(voxel * 0.6, 0.4, 1.5);
+  // The outline grids do not depend on the mesh resolution, so one cached grid serves drafts, finals and every in-between size.
+  const cell = opts.cell ?? OUTLINE_CELL_MM;
 
   // --- which parts count, and what they really look like (twins are mirrored copies) ---
   const byId = new Map(doc.parts.map((p) => [p.id, p]));
@@ -94,7 +106,7 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
   const isOff = (p: Part) => !p.melt || p.cut;
   let mb = 0;
   for (const p of parts) if (!isOff(p)) mb = Math.max(mb, p.blend);
-  const margin = mb + 3 * voxel + 1;
+  const margin = mb + OUTLINE_MARGIN_MM;
   const fields: PartField[] = parts.map((p) => buildPartField(p, { cell, margin, cache: opts.cache }));
 
   const bx0 = new Float64Array(n), by0 = new Float64Array(n), bz0 = new Float64Array(n);
@@ -135,6 +147,20 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
     const dz = Math.max(bz0[i] - z, 0, z - bz1[i]);
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   };
+  const reach2 = reach.map((r) => r * r);
+  const boxDist2 = (i: number, x: number, y: number, z: number): number => {
+    const dx = Math.max(bx0[i] - x, 0, x - bx1[i]);
+    const dy = Math.max(by0[i] - y, 0, y - by1[i]);
+    const dz = Math.max(bz0[i] - z, 0, z - bz1[i]);
+    return dx * dx + dy * dy + dz * dz;
+  };
+  // which solid parts could be within reach of each spot, in part order (so blending order is kept)
+  const solidIndex = new SpatialIndex(
+    solid.map((i) => ({
+      min: [bx0[i] - reach[i], by0[i] - reach[i], bz0[i] - reach[i]] as [number, number, number],
+      max: [bx1[i] + reach[i], by1[i] + reach[i], bz1[i] + reach[i]] as [number, number, number],
+    })),
+  );
 
   // --- grooves: capsule-shaped cuts, listed as segments ---
   const segA: number[] = [];
@@ -198,7 +224,12 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
     opBoxes.push({ min: [c[0] - reachR, c[1] - reachR, c[2] - reachR], max: [c[0] + reachR, c[1] + reachR, c[2] + reachR] });
   }
   const nOps = oType.length;
-  const opIndex = nOps ? new SpatialIndex(opBoxes) : null;
+  // Grabs are rare and work differently, so they get their own lookup. Item n of each index is dab number grabOps[n] / otherOps[n].
+  const grabOps: number[] = [];
+  const otherOps: number[] = [];
+  oType.forEach((t, o) => (t === GRAB ? grabOps : otherOps).push(o));
+  const grabIndex = grabOps.length ? new SpatialIndex(grabOps.map((o) => opBoxes[o])) : null;
+  const otherIndex = otherOps.length ? new SpatialIndex(otherOps.map((o) => opBoxes[o]), 5) : null;
   const hasSmooth = oType.includes(SMOOTH);
 
   // --- bounds ---
@@ -219,22 +250,31 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
   }
 
   // --- evaluation ---
+  let baseWasFar = false; // set by evalBase: true when no part was close and the answer is only a rough "outside"
   const evalBase = (x: number, y: number, z: number): number => {
+    baseWasFar = false;
     let F = 0;
     let any = false;
-    let lower = Infinity;
-    for (let s = 0; s < solid.length; s++) {
-      const i = solid[s];
-      const bd = boxDist(i, x, y, z);
-      if (bd > reach[i]) {
-        if (bd < lower) lower = bd;
-        continue;
+    const cellId = solidIndex.cellOf(x, y, z);
+    if (cellId >= 0) {
+      for (let q = solidIndex.starts[cellId]; q < solidIndex.starts[cellId + 1]; q++) {
+        const i = solid[solidIndex.items[q]];
+        if (boxDist2(i, x, y, z) > reach2[i]) continue;
+        const d = fields[i].distance(x, y, z);
+        F = any ? smin(F, d, kk[i]) : d;
+        any = true;
       }
-      const d = fields[i].distance(x, y, z);
-      F = any ? smin(F, d, kk[i]) : d;
-      any = true;
     }
-    if (!any) return lower; // nothing is close: a safe, positive "outside"
+    if (!any) {
+      // nothing is close: a safe, positive "outside" (the distance to the nearest part's box)
+      let lower = Infinity;
+      for (let s = 0; s < solid.length; s++) {
+        const bd = boxDist(solid[s], x, y, z);
+        if (bd < lower) lower = bd;
+      }
+      baseWasFar = true;
+      return lower;
+    }
 
     if (cuts.length) {
       let C = 0;
@@ -270,67 +310,82 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
 
   /** The field with only the first `limit` sculpt operations applied. */
   const evalOps = (x: number, y: number, z: number, limit: number): number => {
-    const cellId = opIndex ? opIndex.cellOf(x, y, z) : -1;
-    if (cellId < 0 || !opIndex) return evalBase(x, y, z);
-    const items = opIndex.items;
-    const s0 = opIndex.starts[cellId];
-    const s1 = opIndex.starts[cellId + 1];
-
     // The last grab that reaches here replaces everything before it: look up the earlier field where the surface was dragged from.
     let F = NaN;
-    let from = s0;
-    for (let q = s1 - 1; q >= s0; q--) {
-      const o = items[q];
-      if (o >= limit || oType[o] !== GRAB) continue;
-      const cx = oc[o * 3], cy = oc[o * 3 + 1], cz = oc[o * 3 + 2];
-      const Dx = oD[o * 3], Dy = oD[o * 3 + 1], Dz = oD[o * 3 + 2];
-      const reff = oReff[o];
-      const L = Math.sqrt(Dx * Dx + Dy * Dy + Dz * Dz);
-      if (Math.hypot(x - cx, y - cy, z - cz) >= reff + L) continue;
-      let qx = x, qy = y, qz = z;
-      for (let it = 0; it < 3; it++) {
-        const w = wFall(Math.hypot(qx - cx, qy - cy, qz - cz) / reff);
-        qx = x - Dx * w;
-        qy = y - Dy * w;
-        qz = z - Dz * w;
+    let after = -1; // only dabs made after this one still apply
+    if (grabIndex) {
+      const g = grabIndex.cellOf(x, y, z);
+      if (g >= 0) {
+        for (let q = grabIndex.starts[g + 1] - 1; q >= grabIndex.starts[g]; q--) {
+          const o = grabOps[grabIndex.items[q]];
+          if (o >= limit) continue;
+          const cx = oc[o * 3], cy = oc[o * 3 + 1], cz = oc[o * 3 + 2];
+          const Dx = oD[o * 3], Dy = oD[o * 3 + 1], Dz = oD[o * 3 + 2];
+          const reff = oReff[o];
+          const L = Math.sqrt(Dx * Dx + Dy * Dy + Dz * Dz);
+          if (Math.hypot(x - cx, y - cy, z - cz) >= reff + L) continue;
+          let qx = x, qy = y, qz = z;
+          for (let it = 0; it < 3; it++) {
+            const w = wFall(Math.hypot(qx - cx, qy - cy, qz - cz) / reff);
+            qx = x - Dx * w;
+            qy = y - Dy * w;
+            qz = z - Dz * w;
+          }
+          F = evalOps(qx, qy, qz, o);
+          after = o;
+          break;
+        }
       }
-      F = evalOps(qx, qy, qz, o);
-      from = q + 1;
-      break;
     }
 
-    let base = NaN;
-    if (F !== F) {
-      base = evalBase(x, y, z);
-      F = base;
-    }
+    if (F !== F) F = evalBase(x, y, z); // no grab reaches here: start from the parts
 
     let smooth = 0;
-    for (let q = from; q < s1; q++) {
-      const o = items[q];
-      if (o >= limit) break;
-      const type = oType[o];
-      if (type === GRAB) continue;
-      const dx = x - oc[o * 3], dy = y - oc[o * 3 + 1], dz = z - oc[o * 3 + 2];
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      const r = oR[o];
-      if (type === PULL) {
-        F = smin(F, dist - r, oK[o]);
-      } else if (type === PUSH) {
-        F = -smin(-F, dist - r, oK[o]);
-      } else if (dist < r) {
-        const u = 1 - dist / r;
-        smooth += oW[o] * u * u;
+    if (otherIndex) {
+      const c = otherIndex.cellOf(x, y, z);
+      if (c >= 0) {
+        const items = otherIndex.items;
+        for (let q = otherIndex.starts[c]; q < otherIndex.starts[c + 1]; q++) {
+          const o = otherOps[items[q]];
+          if (o >= limit) break;
+          if (o < after) continue;
+          const dx = x - oc[o * 3], dy = y - oc[o * 3 + 1], dz = z - oc[o * 3 + 2];
+          const d2 = dx * dx + dy * dy + dz * dz;
+          const type = oType[o];
+          const r = oR[o];
+          if (type === PULL) {
+            // smooth-min only changes the value when the dab is closer than F + k: compare squares first
+            const lim = F + r + oK[o];
+            if (lim > 0 && d2 >= lim * lim) continue;
+            F = smin(F, Math.sqrt(d2) - r, oK[o]);
+          } else if (type === PUSH) {
+            const lim = r + oK[o] - F;
+            if (lim <= 0 || d2 >= lim * lim) continue;
+            F = -smin(-F, Math.sqrt(d2) - r, oK[o]);
+          } else if (d2 < r * r) {
+            const u = 1 - Math.sqrt(d2) / r;
+            smooth += oW[o] * u * u;
+          }
+        }
       }
     }
 
     if (smooth > 0 && hasSmooth) {
-      // pull the value towards the average of its neighbours, as the prototype's smooth brush did
-      if (base !== base) base = evalBase(x, y, z);
+      // pull the value towards the average of its neighbours, as the prototype's smooth brush did.
+      // Skipped where any of them is far from every part: there the field is only a rough "outside",
+      // and averaging it in would make the value jump.
       const h = voxel;
-      const avg =
-        (evalBase(x - h, y, z) + evalBase(x + h, y, z) + evalBase(x, y - h, z) + evalBase(x, y + h, z) + evalBase(x, y, z - h) + evalBase(x, y, z + h)) / 6;
-      F += Math.min(smooth, 1) * (avg - base);
+      const b0 = evalBase(x, y, z);
+      let ok = !baseWasFar;
+      let sum = 0;
+      if (ok) {
+        const nb = [[-h, 0, 0], [h, 0, 0], [0, -h, 0], [0, h, 0], [0, 0, -h], [0, 0, h]];
+        for (let n = 0; n < 6 && ok; n++) {
+          sum += evalBase(x + nb[n][0], y + nb[n][1], z + nb[n][2]);
+          if (baseWasFar) ok = false;
+        }
+      }
+      if (ok) F += Math.min(smooth, 1) * (sum / 6 - b0);
     }
     return F;
   };
@@ -365,5 +420,51 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
   };
 
   if (boxIsEmpty(bounds)) return { bounds, sample: () => Infinity, partAt: () => -1 };
-  return { bounds, sample, partAt };
+  // Distances from rounded shapes are close to true distances. Squashing, tapering, side shapes and
+  // grab dabs stretch space, so allow more room for those.
+  // Squashing, tapering and side shapes stretch space a little, so the value can change a little faster than a true distance.
+  const stretches = parts.some((p) => p.taper !== 0 || p.squash !== 0 || p.profile) ? 1.8 : 1.5;
+  // Everything that can bend space away from "parts only": sculpt dabs and grooves. Near these we never claim a ball is empty or solid.
+  const bendBoxes: Box3[] = [...opBoxes, ...segBoxes];
+  const bendIndex = bendBoxes.length ? new SpatialIndex(bendBoxes) : null;
+
+  const probe = (x: number, y: number, z: number, radius: number): number => {
+    const m = radius + 1.5 * voxel;
+    if (bendIndex && bendIndex.anyIn(x - m, y - m, z - m, x + m, y + m, z + m)) return 0;
+    // Look at every part that could matter anywhere in the ball, not just at its middle.
+    const wide = radius * stretches;
+    let F = 0;
+    let any = false;
+    for (let s = 0; s < solid.length; s++) {
+      const i = solid[s];
+      const r = reach[i] + wide;
+      if (boxDist2(i, x, y, z) > r * r) continue;
+      const d = fields[i].distance(x, y, z);
+      F = any ? smin(F, d, kk[i]) : d;
+      any = true;
+    }
+    if (!any) {
+      let lower = Infinity;
+      for (let s = 0; s < solid.length; s++) {
+        const bd = boxDist(solid[s], x, y, z);
+        if (bd < lower) lower = bd;
+      }
+      return lower / stretches;
+    }
+    if (cuts.length) {
+      let C = 0;
+      let anyCut = false;
+      for (let s = 0; s < cuts.length; s++) {
+        const i = cuts[s];
+        const r = reach[i] + wide;
+        if (boxDist2(i, x, y, z) > r * r) continue;
+        const d = fields[i].distance(x, y, z);
+        C = anyCut ? (d < C ? d : C) : d;
+        anyCut = true;
+      }
+      if (anyCut) F = kc > 1e-6 ? -smin(-F, C, kc) : Math.max(F, -C);
+    }
+    return F / stretches;
+  };
+  return { bounds, sample, partAt, probe };
 }

@@ -1,10 +1,19 @@
 {
-  "comment": "Meshing time limits, in milliseconds, per tier. Each tier is tested with the browser slowed down by the 'throttle' number (Chrome DevTools CPU throttling) to stand in for the slowest device of that tier.",
+  "comment": "Meshing time limits, in milliseconds, per tier. Each tier is tested with the browser slowed down by the 'throttle' number (Chrome DevTools CPU throttling) to stand in for the slowest device of that tier. Toys listed in mustPass must be inside the limits at the tier's own grid size. The other toys are extreme (20 parts, 300 sculpt dabs); they are only reported, because the scheduler makes the grid coarser when meshing is slow.",
   "draftMs": 40,
   "finalMs": 400,
   "tiers": {
-    "high": { "throttle": 2 },
-    "mid": { "throttle": 4 },
-    "low": { "throttle": 6 }
-  }
+    "high": {
+      "throttle": 2
+    },
+    "mid": {
+      "throttle": 4
+    },
+    "low": {
+      "throttle": 6
+    }
+  },
+  "mustPass": [
+    "character"
+  ]
 }

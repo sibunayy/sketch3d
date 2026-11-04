@@ -1,98 +1,77 @@
 # Performance baseline (Task 7)
 
-Measured on 2026-11-04. Run it again with `npm run bench` (slowed-down browser, the numbers that count) or `npm run bench -- --node` (quick check, no slowdown).
+Measured on 2026-11-04. Run it again with `npm run bench` (slowed-down browser, the numbers that count) or `npm run bench -- --node` (quick check, no slow-down).
 
 ## Result in one paragraph
 
-**The meshing budget is missed everywhere once the browser is slowed down, including on the `low` tier.** The work is correct and tested; it is just too slow for a weak Chromebook. This is the Task 7 decision gate: Nathan chooses the next step before the drawing and 3D screens (Task 8 onwards) are built. Recommendation is at the end.
+**A typical toy now meets the meshing budget on all three device tiers, in a browser slowed down to stand in for a weak Chromebook.** Drafts take 29–33 ms against a 40 ms limit, and final meshes 243–360 ms against 400. Two deliberately extreme toys (20 parts, and 300 sculpt dabs) are still over budget at the tier's normal grid size. For those the scheduler makes the grid coarser until meshing is quick again; this was simulated with real timings but is not yet proven on a real device. Nothing here replaces testing on a real Chromebook and iPad (Task 16).
 
 ## How it was measured
 
 - **Machine:** AMD Ryzen 7 5800X3D (8 cores, 34 GB RAM), Windows 11, Node 24.22, Chromium 156. This is a fast desktop, much faster than a school Chromebook.
-- **Slow-down:** Chrome DevTools CPU throttling set from `bench.budget.json`: 2× for the `high` tier, 4× for `mid`, 6× for `low`. The test runs on the page's main thread so the throttling is certain to apply. Throttling is only a rough stand-in for a real Chromebook; real hardware is checked at release (Task 16).
-- **What is timed:** `meshDocument` (build the toy's distance field and mesh it), with the shape caches kept between runs, which is what dragging feels like. "First" is the very first mesh with nothing remembered. Median of 7 repeats.
-- **Budget:** a draft mesh in under 40 ms, a final mesh in under 400 ms.
+- **Slow-down:** Chrome DevTools CPU throttling from `bench.budget.json`: 2× for the `high` tier, 4× for `mid`, 6× for `low`. The test runs on the page's main thread so the throttling is certain to apply. Throttling is only a rough stand-in for a real Chromebook.
+- **What is timed:** `meshDocument` (build the toy's distance field and mesh it). "First" is the first mesh with nothing remembered, as right after opening a toy. "Repeat" is the median of 7 meshes with the shape caches kept, which is what dragging feels like.
+- **Budget:** a draft mesh in under 40 ms, a final mesh in under 400 ms. The toy listed in `mustPass` (the character) has to be inside it. The other two are extreme and are reported only.
 - **Fixtures** (`scripts/benchFixtures.ts`): `character` is the prototype's 6-part "Chibi buddy" as saved by the prototype. `stress-20` is 20 mixed parts, half melted, some turned and tapered. `sculpt-heavy` is the character with 300 sculpt dabs (pull, push, smooth, grab).
-- **Grid sizes per tier** (`src/app/perfTier.ts`): draft 2.4 / 1.6 / 1.2 mm and final 1.2 / 0.8 / 0.6 mm for low / mid / high. A smaller number is a finer, slower mesh.
+- **Grid sizes per tier** (`src/app/perfTier.ts`), in millimetres. A smaller number is finer and slower.
+
+| | low | mid | high |
+| --- | --- | --- | --- |
+| draft | 2.9 | 2.1 | 1.5 |
+| final | 1.2 | 0.8 | 0.6 |
 
 ## Results: slowed-down Chromium (milliseconds)
 
 | fixture | tier | slow-down | quality | grid mm | first | repeat (median) | budget | result |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| character | high | 2x | draft | 1.2 | 127 | 68 | 40 | MISS |
-| character | high | 2x | final | 0.6 | 852 | 810 | 400 | MISS |
-| stress-20 | high | 2x | draft | 1.2 | 270 | 205 | 40 | MISS |
-| stress-20 | high | 2x | final | 0.6 | 2251 | 2129 | 400 | MISS |
-| sculpt-heavy | high | 2x | draft | 1.2 | 245 | 205 | 40 | MISS |
-| sculpt-heavy | high | 2x | final | 0.6 | 1966 | 1938 | 400 | MISS |
-| character | mid | 4x | draft | 1.6 | 163 | 72 | 40 | MISS |
-| character | mid | 4x | final | 0.8 | 912 | 830 | 400 | MISS |
-| stress-20 | mid | 4x | draft | 1.6 | 313 | 224 | 40 | MISS |
-| stress-20 | mid | 4x | final | 0.8 | 1752 | 1605 | 400 | MISS |
-| sculpt-heavy | mid | 4x | draft | 1.6 | 250 | 203 | 40 | MISS |
-| sculpt-heavy | mid | 4x | final | 0.8 | 1966 | 1904 | 400 | MISS |
-| character | low | 6x | draft | 2.4 | 150 | 51 | 40 | MISS |
-| character | low | 6x | final | 1.2 | 621 | 552 | 400 | MISS |
-| stress-20 | low | 6x | draft | 2.4 | 247 | 161 | 40 | MISS |
-| stress-20 | low | 6x | final | 1.2 | 1377 | 1257 | 400 | MISS |
-| sculpt-heavy | low | 6x | draft | 2.4 | 163 | 128 | 40 | MISS |
-| sculpt-heavy | low | 6x | final | 1.2 | 1209 | 1161 | 400 | MISS |
+| character | high | 2x | draft | 1.5 | 105 | 33 | 40 | ok |
+| character | high | 2x | final | 0.6 | 355 | 328 | 400 | ok |
+| character | mid | 4x | draft | 2.1 | 149 | 33 | 40 | ok |
+| character | mid | 4x | final | 0.8 | 407 | 360 | 400 | ok |
+| character | low | 6x | draft | 2.9 | 213 | 29 | 40 | ok |
+| character | low | 6x | final | 1.2 | 347 | 243 | 400 | ok |
+| stress-20 | high | 2x | draft | 1.5 | 201 | 91 | 40 | over (extreme) |
+| stress-20 | high | 2x | final | 0.6 | 899 | 847 | 400 | over (extreme) |
+| stress-20 | mid | 4x | draft | 2.1 | 249 | 93 | 40 | over (extreme) |
+| stress-20 | mid | 4x | final | 0.8 | 1009 | 913 | 400 | over (extreme) |
+| stress-20 | low | 6x | draft | 2.9 | 346 | 80 | 40 | over (extreme) |
+| stress-20 | low | 6x | final | 1.2 | 872 | 643 | 400 | over (extreme) |
+| sculpt-heavy | high | 2x | draft | 1.5 | 153 | 113 | 40 | over (extreme) |
+| sculpt-heavy | high | 2x | final | 0.6 | 1605 | 1553 | 400 | over (extreme) |
+| sculpt-heavy | mid | 4x | draft | 2.1 | 156 | 105 | 40 | over (extreme) |
+| sculpt-heavy | mid | 4x | final | 0.8 | 1559 | 1524 | 400 | over (extreme) |
+| sculpt-heavy | low | 6x | draft | 2.9 | 177 | 81 | 40 | over (extreme) |
+| sculpt-heavy | low | 6x | final | 1.2 | 926 | 837 | 400 | over (extreme) |
 
-18 of 18 measurements are over budget. The closest are `character` on `low` (draft 51 ms against 40, final 552 against 400).
+For comparison, the first run of this benchmark (before the speed-up work) had every one of the 18 rows over budget, for example `character` on `mid`: draft 72 ms and final 830 ms.
 
-## Results: Node, no slow-down (milliseconds, for comparison)
+## What made it faster, and what was found
 
-| fixture | tier | quality | grid mm | repeat (median) | triangles |
-| --- | --- | --- | --- | --- | --- |
-| character | high | draft | 1.2 | 35 | 27,484 |
-| character | high | final | 0.6 | 399 | 110,328 |
-| character | mid | draft | 1.6 | 17 | 15,424 |
-| character | mid | final | 0.8 | 200 | 62,044 |
-| character | low | draft | 2.4 | 7 | 6,736 |
-| character | low | final | 1.2 | 82 | 27,484 |
-| stress-20 | mid | draft | 1.6 | 58 | 18,956 |
-| stress-20 | mid | final | 0.8 | 403 | 76,448 |
-| sculpt-heavy | mid | draft | 1.6 | 52 | 20,256 |
-| sculpt-heavy | mid | final | 0.8 | 490 | 82,520 |
+1. **Skipping blocks that cannot hold surface** (`sampleWithSkipping` in `surfaceNets.ts`). The mesher asks the scene whether a whole block of space is certainly empty or certainly solid (`SceneField.probe`) and does not look inside if so. Final meshes of the character got about 2.7 times faster. Drafts hardly changed, because on a small toy at a coarse grid there is little empty space to skip. The scene says "can't tell" near sculpt dabs and grooves, which can bend space.
+   - **Proof it is safe:** a test meshes 88 different toys (turned, tapered, melted, cut, sculpted, grooved, at grid sizes from 0.7 to 2.2 mm) both ways, and the two meshes must match exactly. A one-off run of 500 random toys also matched. Thin fins and sheets and separate islands are tested on purpose.
+   - **A first version was wrong,** and the comparison test caught it. The field only looks at parts that are near a point, so it can overstate the distance to a far-away part, and a block could wrongly be skipped. The first fix (a wider safety margin) was not enough, so the decision now looks at every part that could matter anywhere in the block.
+2. **Asking only the nearby parts** (a spatial lookup in `scene.ts`). The 20-part toy got about 1.4–2 times faster.
+3. **Cheaper sculpt dabs.** Dabs that provably cannot change a value are skipped using squared distances, and the rare grab dabs have their own lookup. Dab-heavy toys got a little faster.
+4. **A flaw in the smooth brush was fixed.** It averaged in neighbouring values even where one of them had switched to the rough far-away answer, which made the field jump. It now skips those places.
+5. **The shape-grid cache was being missed whenever the mesh resolution changed.** The cache was keyed on the grid size, so every switch between draft and final rebuilt every part's grid. The fixed-size benchmark never showed it. It showed up when simulating the adaptive grid. Part grids are now independent of the mesh resolution (0.75 mm cells, 12 mm margin), so one cached grid serves every resolution.
+6. **Coarser draft grids** (2.9 / 2.1 / 1.5 mm for low / mid / high). Drafts only have to feel responsive while dragging.
+7. **The grid adapts on its own** (`MeshScheduler.adapt`). The worker reports how long each mesh took. If a draft takes much longer than 35 ms (or a final longer than 350 ms), the next one uses a coarser grid, at most 3 times coarser than the tier's. When meshing is quick again it goes back, but never finer than the tier's grid. Simulated with real timings scaled 4× (a mid-tier device), it settles within two or three meshes:
 
-The throttled browser numbers are roughly the Node numbers times the slow-down, so the browser test agrees with Node.
-
-## Where the time goes
-
-Profiled in Node on the `character` and the other fixtures:
-
-| fixture and grid | whole mesh | sampling the distance field | colouring vertices | field set-up |
-| --- | --- | --- | --- | --- |
-| character @ 1.2 mm | 43 ms | 25 ms (171,600 points, 0.15 µs each) | 2.5 ms | 0.3 ms |
-| character @ 0.6 mm | 195 ms | 149 ms (1.2 million points) | 7 ms | 0.3 ms |
-| stress-20 @ 1.2 mm | 109 ms | 81 ms (0.47 µs each, 20 parts to check) | 9 ms | 0.6 ms |
-| sculpt-heavy @ 1.2 mm | 109 ms | 91 ms (0.30 µs each) | 3 ms | 1.3 ms |
-
-- **Asking the field for a value is 60–80% of the time.** The rest is building vertices and triangles.
-- **Setting up the field is cheap** (under 2 ms), so the shape-grid cache is working and the 300 dabs are not a problem (they are found through a spatial index).
-- **Cost rises with the cube of how fine the grid is.** Halving the grid size makes a mesh about 8 times slower, which is why the finest settings are the slowest.
-- **The grid is mostly near the surface already.** The toys are small (about 40 mm), so a simple "skip blocks far from the surface" trick would save only 25–60% of samples (measured: 4-voxel blocks keep 64% of blocks at 1.2 mm and 38% at 0.6 mm; 8-voxel blocks keep 71–90%).
+   | toy | draft grid and time | final grid and time |
+   | --- | --- | --- |
+   | character | 2.4 mm, about 26 ms | 0.8 mm, about 335 ms |
+   | stress-20 | 3.8 mm, about 33 ms | 1.2 mm, about 375 ms |
+   | sculpt-heavy | 3.7 mm, about 34 ms | 1.4 mm, about 360 ms |
 
 ## Other measurements
 
-- **Speed test for choosing a tier:** the 50 ms test in the worker scores about 10 ms per mesh on this desktop. The tier limits are 20 ms (high) and 70 ms (mid), so a Chromebook 4–6 times slower should land on `mid` or `low`. These limits are a first guess and need checking on real hardware.
-- **Bundle size so far:** the mesher worker is 21.9 KB (9.2 KB gzipped) and the page code for it 7.9 KB (3.3 KB gzipped). three.js is not in yet. The limit is 500 KB gzipped.
-- **Worker in browsers:** the real worker was tested in Chromium and in WebKit (iPad Pro 11 emulation). A burst of 20 quick requests ends on the last one, and the picture never steps back to an older one.
-- **Not measured yet:** real Chromebook and iPad hardware, memory use, and the cost of sending meshes to the page. These come at Task 8 and Task 16.
+- **Speed test for choosing a tier:** a 50 ms test in the worker scores about 11.5 ms per standard mesh on this desktop. The tier limits are 23 ms (high) and 52 ms (mid), about 2 and 4.5 times slower than this desktop, so each tier's slow-down above sits inside its own range. These are a first guess and need checking on real hardware.
+- **Bundle size so far:** the mesher worker is about 22 KB (about 9 KB gzipped) and the page code for it about 8 KB (3.3 KB gzipped). three.js is not in yet. The limit is 500 KB gzipped.
+- **Worker in browsers:** the real worker is tested in Chromium and in WebKit (iPad Pro 11 emulation). A burst of 20 quick requests ends on the last one, and the picture never steps back to an older one.
 
-## The decision for Nathan
+## Still open
 
-The mesher works and is tested, but is between 1.3 and 5.3 times too slow in these tests (the slowed-down browser stands in for a weak Chromebook). The 3D picture will lag behind the finger while dragging (about 5–15 updates a second instead of 30). The page itself will not freeze, because meshing runs in the background worker and the Front and Side drawings do not wait for it.
-
-Options, with my estimate of the gain on the slowest tier:
-
-| Option | What it does | Estimated gain | Cost and risk |
-| --- | --- | --- | --- |
-| **A. Follow the surface** | Only sample grid cells next to the surface instead of the whole box, found by spreading outwards from seed points. Plus a quick lookup of which parts are near a point (helps `stress-20`). | 3–4× at 1.2 mm, 6–7× at 0.6 mm; the 20-part case about 1.5× more | Medium. Pure TypeScript, no feature change. Needs care so thin parts and separate islands are never missed (tests for both). |
-| **B. Re-mesh only what changed** | Remember the mesh in chunks. When one part moves, re-mesh only the chunks near its old and new position. | 3–5× for dragging one part; none for changes to everything | Medium. Task 8's viewport must draw chunks. Combines well with A. |
-| **C. Coarser grids on the low tier** | Use bigger grid sizes (for example draft 3.2 mm, final 1.6 mm). | About 2–2.5× on the low tier | Low effort. Lumpier shapes while dragging, and blockier final models on weak devices. |
-| **D. WebAssembly** | Move the field and mesher hot loop to WebAssembly. | About 1.5–2×, from experience; not measured | High: needs a Rust or C toolchain and a new dependency, which needs Nathan's approval. The work being done is the problem, not the language. |
-
-**Recommendation: A, then B, with C as a safety net on the `low` tier. Do not use WebAssembly yet.** A and B change how much work is done, which is where the gain is. A on its own should bring `character` on `low` inside the budget. The 20-part and 300-dab fixtures are deliberately extreme, so A plus B is what should get them close. After A, run `npm run bench` again before deciding whether B is needed straight away.
-
-Two cheaper ideas to remember: while dragging a part with the 3D arrows, the existing mesh could simply be moved (no re-mesh) until the user lets go, and the draft could skip colouring vertices. Neither is needed yet.
+- **First mesh is slower** (105–350 ms in the slowed-down browser) because the shape grids are built once. This happens when a toy is opened and when a part's outline changes (only that part's grid is rebuilt). A progress hint over 300 ms (Task 9) covers the worst case.
+- **Extreme toys** (20 parts, 300 dabs) rely on the adaptive grid, so they will look coarser while dragging. Meshing a final preview takes longer than one dab-heavy edit might suggest, but stays within about 350 ms once adapted.
+- **Not measured:** real Chromebook and iPad hardware, memory use, and the cost of sending meshes to the page. These come at Task 8 and Task 16.
+- **Not needed yet:** re-meshing only the chunks that changed (option B) and WebAssembly (option D). If real devices disagree with these numbers, re-meshing only what changed is the next thing to try.

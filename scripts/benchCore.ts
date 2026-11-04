@@ -25,17 +25,20 @@ export async function runBench(tiers: PerfTier[], repeats = 7, only?: string[]):
   const rows: BenchRow[] = [];
   for (const fx of fixtures()) {
     if (only && !only.includes(fx.name)) continue;
+    // like the app, every mesh of one toy shares one cache of outline grids, whatever its resolution
+    const shared: OutlineCache = new Map();
     for (const tier of tiers) {
       for (const quality of ['draft', 'final'] as const) {
         const voxelMm = voxelFor(tier, quality);
-        const cache: OutlineCache = new Map();
+        // cold: nothing remembered yet, as right after opening a toy
         const t0 = performance.now();
-        const first = await meshDocument(fx.doc, voxelMm, quality, { cache });
+        const first = await meshDocument(fx.doc, voxelMm, quality, { cache: new Map() });
         const coldMs = performance.now() - t0;
         const times: number[] = [];
+        await meshDocument(fx.doc, voxelMm, quality, { cache: shared });
         for (let i = 0; i < repeats; i++) {
           const t = performance.now();
-          await meshDocument(fx.doc, voxelMm, quality, { cache });
+          await meshDocument(fx.doc, voxelMm, quality, { cache: shared });
           times.push(performance.now() - t);
         }
         rows.push({

@@ -240,6 +240,21 @@ describe('grooves', () => {
   });
 });
 
+describe('outline grid cache', () => {
+  it('is reused when only the mesh resolution changes (draft, final, adaptive sizes)', () => {
+    const cache = new Map();
+    const doc = makeDoc([ball('a', 0), ball('b', 14, { melt: true, blend: 5 })]);
+    buildSceneField(doc, { voxelMm: 2.1, cache });
+    const first = [...cache.values()].map((e) => e.field);
+    expect(first).toHaveLength(2);
+    for (const v of [0.8, 3.4, 1.3]) {
+      buildSceneField(doc, { voxelMm: v, cache });
+      expect([...cache.values()].map((e) => e.field)).toEqual(first);
+      first.forEach((f, i) => expect([...cache.values()][i].field).toBe(f));
+    }
+  });
+});
+
 describe('empty and awkward documents', () => {
   it('an empty doc returns +Infinity everywhere, and bounds are empty', () => {
     const f = buildSceneField(makeDoc([]));
