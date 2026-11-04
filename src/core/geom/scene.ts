@@ -203,7 +203,9 @@ export function buildSceneField(doc: Doc, opts: SceneOptions = {}): SceneField {
 
   // --- bounds ---
   const bounds = emptyBox();
-  for (const i of solid) growBox(bounds, bx0[i], by0[i], bz0[i], bx1[i], by1[i], bz1[i]);
+  // melting can push a surface out by up to a quarter of the blend distance
+  const bulge = mb / 4;
+  for (const i of solid) growBox(bounds, bx0[i] - bulge, by0[i] - bulge, bz0[i] - bulge, bx1[i] + bulge, by1[i] + bulge, bz1[i] + bulge);
   for (let o = 0; o < nOps; o++) {
     const r = oReff[o];
     if (oType[o] === PULL) {
