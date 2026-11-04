@@ -44,7 +44,7 @@ export function smin(a: number, b: number, k: number): number {
 }
 
 /** The mirrored copy (across x = 0) of `src`, keeping the twin's own name, colour and id. */
-function mirrorPart(src: Part, twin: Part): Part {
+export function mirrorPart(src: Part, twin: Part): Part {
   return {
     ...twin,
     outline: src.outline.map(([x, y]): [number, number] => [-x, y]).reverse(),
@@ -65,6 +65,16 @@ function mirrorPart(src: Part, twin: Part): Part {
 const OUTLINE_CELL_MM = 0.75;
 /** How far beyond its outline each grid stays accurate (on top of the blend distance). Covers coarse draft meshes too. */
 const OUTLINE_MARGIN_MM = 12;
+
+/** The parts as they really are: with symmetry on, a twin is the mirror image of the part it follows. */
+export function effectiveParts(doc: Doc): Part[] {
+  if (!doc.settings.symmetry) return doc.parts;
+  const byId = new Map(doc.parts.map((p) => [p.id, p]));
+  return doc.parts.map((p) => {
+    const src = p.twinOf ? byId.get(p.twinOf) : undefined;
+    return src ? mirrorPart(src, p) : p;
+  });
+}
 
 const PULL = 0;
 const PUSH = 1;

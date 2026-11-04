@@ -26,6 +26,8 @@ export function createStore(initial: Doc = createDoc()) {
   const tool = signal<string>('select');
   const view = signal<ViewName>('front');
   const toasts = signal<Toast[]>([]);
+  /** The Multi button: while on, tapping parts adds them to the selection. */
+  const multi = signal(false);
 
   let history = new History(initial, MAX_STEPS);
   // The selection to go back to for each history step, kept in step with History.
@@ -81,6 +83,13 @@ export function createStore(initial: Doc = createDoc()) {
       toast(e instanceof DocError ? e.message : copy.changeFailed);
       return false;
     }
+    previewBase = null;
+    record(label, next);
+    return true;
+  };
+
+  /** Adds an already-checked toy as a new undo step. */
+  const record = (label: string, next: Doc) => {
     selections[index] = [...selection.value]; // remember what was selected before this change
     history.push(next, label);
     selections = selections.slice(0, index + 1);
@@ -90,10 +99,46 @@ export function createStore(initial: Doc = createDoc()) {
     doc.value = next;
     selection.value = prune(selection.value, next);
     changed();
+  };
+
+  // --- previews: change the toy while dragging, with no undo steps, then keep or drop the result ---
+  let previewBase: Doc | null = null;
+
+  /** Shows a change that is not final yet. Each call starts again from the toy as it was before the first one. */
+  const preview = (mutate: (draft: Doc) => void): boolean => {
+    try {
+      const base = previewBase ?? doc.value;
+      const draft = structuredClone(base);
+      mutate(draft);
+      const next = validateDoc(draft);
+      previewBase = base;
+      doc.value = next;
+      for (const cb of listeners.slice()) cb(next);
+      return true;
+    } catch {
+      return false; // keep the last good preview; the drag carries on
+    }
+  };
+
+  /** Makes everything previewed so far one undo step. */
+  const commitPreview = (label: string): boolean => {
+    if (!previewBase) return false;
+    const next = doc.value;
+    previewBase = null;
+    record(label, next);
     return true;
   };
 
+  /** Drops the preview and puts the toy back. */
+  const cancelPreview = () => {
+    if (!previewBase) return;
+    doc.value = previewBase;
+    previewBase = null;
+    for (const cb of listeners.slice()) cb(doc.value);
+  };
+
   const undo = () => {
+    previewBase = null;
     const prev = history.undo();
     if (!prev) return;
     selections[index] = [...selection.value];
@@ -104,6 +149,7 @@ export function createStore(initial: Doc = createDoc()) {
   };
 
   const redo = () => {
+    previewBase = null;
     const next = history.redo();
     if (!next) return;
     selections[index] = [...selection.value];
@@ -115,6 +161,7 @@ export function createStore(initial: Doc = createDoc()) {
 
   /** Starts again from a loaded toy. Clears history. */
   const load = (d: Doc) => {
+    previewBase = null;
     const clean = validateDoc(d);
     doc.value = clean;
     selection.value = new Set();
@@ -130,12 +177,16 @@ export function createStore(initial: Doc = createDoc()) {
     tool,
     view,
     toasts,
+    multi,
     canUndo: canUndo as ReadonlySignal<boolean>,
     canRedo: canRedo as ReadonlySignal<boolean>,
     get history() {
       return history;
     },
     commit,
+    preview,
+    commitPreview,
+    cancelPreview,
     undo,
     redo,
     select,

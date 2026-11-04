@@ -156,3 +156,56 @@ describe('tool and view', () => {
     expect([s.tool.value, s.view.value]).toEqual(['draw', '3d']);
   });
 });
+
+describe('previewing a change while dragging', () => {
+  it('shows the change without adding an undo step, and tells the mesher', () => {
+    const s = createStore(twoParts());
+    const seen = vi.fn();
+    s.onDocChange(seen);
+    s.preview((d) => (d.parts[0].z = 5));
+    s.preview((d) => (d.parts[0].z = 9)); // each preview starts again from the toy as it was
+    expect(s.doc.value.parts[0].z).toBe(9);
+    expect(s.canUndo.value).toBe(false);
+    expect(seen).toHaveBeenCalledTimes(2);
+  });
+
+  it('commitPreview makes the whole drag one undo step', () => {
+    const s = createStore(twoParts());
+    for (let z = 1; z <= 20; z++) s.preview((d) => (d.parts[0].z = z));
+    expect(s.commitPreview('Move')).toBe(true);
+    expect(s.doc.value.parts[0].z).toBe(20);
+    s.undo();
+    expect(s.doc.value.parts[0].z).toBe(0);
+    expect(s.canUndo.value).toBe(false);
+  });
+
+  it('cancelPreview puts the toy back as it was', () => {
+    const s = createStore(twoParts());
+    s.preview((d) => (d.parts[0].z = 9));
+    s.cancelPreview();
+    expect(s.doc.value.parts[0].z).toBe(0);
+    expect(s.canUndo.value).toBe(false);
+  });
+
+  it('a preview that would break the toy is skipped quietly', () => {
+    const s = createStore(twoParts());
+    s.preview((d) => (d.parts[0].z = 4));
+    expect(s.preview((d) => (d.parts[0].depthMm = NaN))).toBe(false);
+    expect(s.doc.value.parts[0].z).toBe(4); // the last good preview stays
+    expect(s.toasts.value).toHaveLength(0);
+  });
+
+  it('commitPreview with nothing previewed does nothing', () => {
+    const s = createStore(twoParts());
+    expect(s.commitPreview('Nothing')).toBe(false);
+    expect(s.canUndo.value).toBe(false);
+  });
+
+  it('a real commit while previewing starts from the toy as it is shown', () => {
+    const s = createStore(twoParts());
+    s.preview((d) => (d.parts[0].z = 6));
+    s.commitPreview('Move');
+    s.commit('Rename', (d) => (d.parts[0].name = 'X'));
+    expect(s.doc.value.parts[0]).toMatchObject({ z: 6, name: 'X' });
+  });
+});

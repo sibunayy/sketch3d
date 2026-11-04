@@ -29,6 +29,33 @@ export const copy = {
   toolCrease: 'Crease',
   toolErase: 'Erase',
 
+  toolShapes: 'Shapes',
+  toolHoles: 'Holes',
+  holeRound: 'Round hole',
+  holeSlot: 'Slot',
+
+  // short help for each tool, shown while it is chosen
+  hintSelect: 'Tap a part to pick it. Drag to move it.',
+  hintDraw: 'Draw a loop to make a shape.',
+  hintShape: 'Drag to make a shape, or tap to place one.',
+  hintHole: 'Drag to cut a hole, or tap to place one.',
+  hintLimb: 'Drag a line to make a tail or an arm.',
+  hintEyes: 'Tap to put eyes on.',
+  hintSmile: 'Tap to put a smile on.',
+  hintCrease: 'Draw a line to carve a crease.',
+  hintErase: 'Tap a part to remove it.',
+  hintSize: 'Drag to make the part bigger or smaller.',
+  hintTurn: 'Drag in a circle to turn the part.',
+  hintReshape: 'Drag the edge to change the shape.',
+
+  // messages from the tools
+  toastPickFirst: 'Tap a part first.',
+  toastLongerLine: 'Drag a longer line to make a tail or an arm.',
+  toastFrontOnly: 'Switch to the Front view to use this.',
+  toastSideLoop: 'Draw a closed shape around the part, from the side.',
+  toastDeleted: 'Deleted.',
+  toastSideUpdated: 'Side shape updated.',
+
   // views
   tabFront: 'Front',
   tabSide: 'Side',

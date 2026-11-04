@@ -53,16 +53,55 @@
   display: flex;
   flex-direction: column;
 }
-.pane-bar {
-  padding: var(--s2) var(--s3);
-}
 .draw-area {
   flex: 1;
   min-height: 0;
-  display: grid;
-  place-items: center;
+  position: relative;
   background: #fff;
   border-top: 2px solid var(--border);
+}
+.draw-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.toolhint {
+  margin: 0;
+  padding: var(--s2) var(--s4) var(--s2) 184px; /* clears the Undo and Redo buttons */
+  /* a fixed height, so a longer hint never moves the drawing underneath */
+  height: calc(2 * var(--target));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  color: var(--ink-soft);
+  background: var(--panel);
+  border-top: 2px solid var(--border);
+}
+.pane-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--s3);
+  align-items: center;
+  /* one constant height, so choosing a tool never moves the drawing underneath */
+  height: 80px;
+  padding: var(--s1) var(--s3);
+}
+.pane-bar .segmented {
+  flex: none;
+}
+.picker {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--s1);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.picker .iconbtn {
+  flex: none;
 }
 .three {
   position: absolute;
