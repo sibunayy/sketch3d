@@ -1,0 +1,288 @@
+/* Design tokens: every colour, space, size and speed the app uses. Plain CSS, no framework. */
+:root {
+  /* colour: strong contrast, calm */
+  --ink: #1b2430;
+  --ink-soft: #46515e;
+  --bg: #eef1f4;
+  --panel: #ffffff;
+  --border: #c3ccd5;
+  --accent: #2154c9;
+  --accent-ink: #ffffff;
+  --accent-soft: #dbe6ff;
+  --danger: #b42318;
+  --focus: #ff9d00;
+
+  /* space, on a 4 px scale */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  /* type */
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text-sm: 16px;
+  --text: 18px;
+  --text-lg: 22px;
+
+  /* touch: nothing you press is smaller than this */
+  --target: 48px;
+
+  /* motion */
+  --fast: 120ms;
+  --slow: 240ms;
+
+  --shadow: 0 2px 8px rgb(27 36 48 / 18%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fast: 0ms;
+    --slow: 0ms;
+  }
+  * {
+    scroll-behavior: auto !important;
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--text);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+canvas {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: var(--s2) var(--s4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--fast);
+}
+.btn:hover {
+  background: var(--accent-soft);
+}
+.btn:active {
+  background: var(--accent-soft);
+}
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.btn img {
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+}
+
+/* icon above a short label: tools, history */
+.iconbtn {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: var(--s1) var(--s2);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: var(--text-sm);
+  line-height: 1.1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.iconbtn img {
+  width: 32px;
+  height: 32px;
+  pointer-events: none;
+}
+.iconbtn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.iconbtn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---------- segmented choice ---------- */
+.segmented {
+  display: inline-flex;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--panel);
+}
+.segmented button {
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 var(--s4);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.segmented button + button {
+  border-left: 2px solid var(--border);
+}
+.segmented button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+/* ---------- slider: a thumb you can grab ---------- */
+.slider {
+  display: grid;
+  gap: var(--s1);
+}
+.slider label {
+  display: flex;
+  justify-content: space-between;
+}
+.slider input[type='range'] {
+  width: 100%;
+  height: var(--target);
+  margin: 0;
+  background: transparent;
+  touch-action: pan-y;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.slider input[type='range']::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--border);
+}
+.slider input[type='range']::-moz-range-track {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--border);
+}
+.slider input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--target);
+  height: var(--target);
+  margin-top: -19px;
+  border-radius: 50%;
+  border: 3px solid var(--accent-ink);
+  background: var(--accent);
+  box-shadow: var(--shadow);
+}
+.slider input[type='range']::-moz-range-thumb {
+  width: var(--target);
+  height: var(--target);
+  border-radius: 50%;
+  border: 3px solid var(--accent-ink);
+  background: var(--accent);
+}
+
+/* ---------- panels, sheets, toasts ---------- */
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--s4);
+}
+.panel h2 {
+  margin: 0 0 var(--s3);
+  font-size: var(--text-lg);
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 60dvh;
+  overflow: auto;
+  padding: var(--s4) var(--s4) calc(var(--s4) + env(safe-area-inset-bottom));
+  background: var(--panel);
+  border-top: 2px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+
+.toasts {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--s3) + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  display: grid;
+  gap: var(--s2);
+  width: min(560px, calc(100vw - var(--s6)));
+  z-index: 40;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  background: var(--ink);
+  color: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.toast .btn {
+  min-height: var(--target);
+  color: var(--ink);
+}
