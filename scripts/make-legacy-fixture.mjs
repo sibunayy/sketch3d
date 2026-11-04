@@ -1,4 +1,4 @@
-/* eslint-disable no-undef, no-global-assign, no-redeclare, @typescript-eslint/no-unused-vars -- the names used inside page.evaluate() exist in the prototype page, not in this file */
+/* eslint-disable no-undef -- the names used inside page.evaluate() exist in the prototype page, not in this file */
 // Builds tests/fixtures/legacy-v2.json: a project saved by the prototype in legacy/.
 // Run once: node scripts/make-legacy-fixture.mjs  (needs `cd legacy && node build.mjs` first)
 import { chromium } from '@playwright/test';
