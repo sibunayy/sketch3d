@@ -48,9 +48,9 @@ For comparison, the first run of this benchmark (before the speed-up work) had e
 ## What made it faster, and what was found
 
 1. **Skipping blocks that cannot hold surface** (`sampleWithSkipping` in `surfaceNets.ts`). The mesher asks the scene whether a whole block of space is certainly empty or certainly solid (`SceneField.probe`) and does not look inside if so. Final meshes of the character got about 2.7 times faster. Drafts hardly changed, because on a small toy at a coarse grid there is little empty space to skip. The scene says "can't tell" near sculpt dabs and grooves, which can bend space.
-   - **Proof it is safe:** a test meshes 88 different toys (turned, tapered, melted, cut, sculpted, grooved, at grid sizes from 0.7 to 2.2 mm) both ways, and the two meshes must match exactly. A one-off run of 500 random toys also matched. Thin fins and sheets and separate islands are tested on purpose.
+   - **Proof it is safe:** a test meshes 80 random toys (turned, tapered, melted, cut, sculpted, grooved, at grid sizes from 0.7 to 2.2 mm) and several hand-made ones both ways, and the two meshes must match exactly. A one-off run of 500 random toys also matched. Thin fins and sheets and separate islands are tested on purpose.
    - **A first version was wrong,** and the comparison test caught it. The field only looks at parts that are near a point, so it can overstate the distance to a far-away part, and a block could wrongly be skipped. The first fix (a wider safety margin) was not enough, so the decision now looks at every part that could matter anywhere in the block.
-2. **Asking only the nearby parts** (a spatial lookup in `scene.ts`). The 20-part toy got about 1.4–2 times faster.
+2. **Asking only the nearby parts** (a spatial lookup in `scene.ts`). Measured on its own in Node, the 20-part toy went from 109 ms to about 68 ms for a draft at the finest grid.
 3. **Cheaper sculpt dabs.** Dabs that provably cannot change a value are skipped using squared distances, and the rare grab dabs have their own lookup. Dab-heavy toys got a little faster.
 4. **A flaw in the smooth brush was fixed.** It averaged in neighbouring values even where one of them had switched to the rough far-away answer, which made the field jump. It now skips those places.
 5. **The shape-grid cache was being missed whenever the mesh resolution changed.** The cache was keyed on the grid size, so every switch between draft and final rebuilt every part's grid. The fixed-size benchmark never showed it. It showed up when simulating the adaptive grid. Part grids are now independent of the mesh resolution (0.75 mm cells, 12 mm margin), so one cached grid serves every resolution.
@@ -72,6 +72,6 @@ For comparison, the first run of this benchmark (before the speed-up work) had e
 ## Still open
 
 - **First mesh is slower** (105–350 ms in the slowed-down browser) because the shape grids are built once. This happens when a toy is opened and when a part's outline changes (only that part's grid is rebuilt). A progress hint over 300 ms (Task 9) covers the worst case.
-- **Extreme toys** (20 parts, 300 dabs) rely on the adaptive grid, so they will look coarser while dragging. Meshing a final preview takes longer than one dab-heavy edit might suggest, but stays within about 350 ms once adapted.
+- **Extreme toys** (20 parts, 300 dabs) rely on the adaptive grid, so they will look coarser while dragging.
 - **Not measured:** real Chromebook and iPad hardware, memory use, and the cost of sending meshes to the page. These come at Task 8 and Task 16.
 - **Not needed yet:** re-meshing only the chunks that changed (option B) and WebAssembly (option D). If real devices disagree with these numbers, re-meshing only what changed is the next thing to try.
