@@ -95,13 +95,13 @@ test('My toys lists saved toys, makes a new one, and opens an old one again', as
 
   await page.getByRole('button', { name: 'My toys' }).click();
   const dialog = page.getByRole('dialog', { name: 'My toys' });
-  await expect(dialog.getByText('1 parts')).toBeVisible();
+  await expect(dialog.locator('.toylist:not(.presets)').getByText('1 part')).toBeVisible();
   await dialog.getByRole('button', { name: 'Make a new toy' }).click();
   expect(await parts(page)).toBe(0);
 
   await page.getByRole('button', { name: 'My toys' }).click();
   // the newest toy (the empty one) is first; open the one with a part in it
-  const saved1 = page.getByRole('dialog', { name: 'My toys' }).locator('li', { hasText: '1 parts' });
+  const saved1 = page.getByRole('dialog', { name: 'My toys' }).locator('.toylist:not(.presets) li', { hasText: '1 part' });
   await saved1.getByRole('button', { name: 'Open' }).click();
   await expect.poll(() => parts(page)).toBe(1);
 });
@@ -114,9 +114,9 @@ test('deleting a toy asks first', async ({ page }) => {
   const dialog = page.getByRole('dialog', { name: 'My toys' });
   await dialog.getByRole('button', { name: 'Delete this toy' }).click();
   await dialog.getByRole('button', { name: 'Keep it' }).click();
-  await expect(dialog.getByText('1 parts')).toBeVisible();
+  await expect(dialog.locator('.toylist:not(.presets)').getByText('1 part')).toBeVisible();
   await dialog.getByRole('button', { name: 'Delete this toy' }).click();
-  await dialog.getByRole('button', { name: 'Yes, delete it' }).click();
+  await dialog.getByRole('button', { name: 'Delete it', exact: true }).click();
   await expect(dialog.getByText('No saved toys yet. Your work saves by itself.')).toBeVisible();
 });
 

@@ -428,3 +428,52 @@
   color: var(--danger);
   font-weight: 600;
 }
+
+/* ---------- first-run guide ---------- */
+.guide-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--s4);
+  background: rgb(27 36 48 / 55%);
+}
+.guide {
+  width: min(480px, 100%);
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s6);
+  background: var(--panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.guide h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.guide p {
+  margin: 0;
+}
+.guide-count {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+.mytoys h3 {
+  margin: var(--s2) 0 0;
+}
+
+/* a crowded top bar wraps instead of running off the screen, and drops its title to make room */
+.topbar {
+  flex-wrap: wrap;
+  row-gap: var(--s1);
+}
+@media (max-width: 1000px) {
+  .topbar h1 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}

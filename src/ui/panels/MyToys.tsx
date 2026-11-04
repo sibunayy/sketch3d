@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Persistence } from '../../app/persist';
 import { currentToyId } from '../../app/persist';
 import type { ProjectMeta } from '../../storage/db';
+import { PRESETS } from '../../core/doc/presets';
 import { Button } from '../components/Button';
 import { copy } from '../copy';
 
@@ -68,6 +69,26 @@ export function MyToys({ persistence, onClose }: { persistence: Persistence; onC
         />
       </div>
 
+      <h3>{copy.panelPresets}</h3>
+      <ul class="toylist presets">
+        {PRESETS.filter((p) => p.id !== 'blank').map((p) => (
+          <li key={p.id}>
+            <div class="toyinfo">
+              <strong>{p.name}</strong>
+              <span>{p.description}</span>
+            </div>
+            <Button
+              label={copy.btnUsePreset}
+              onClick={async () => {
+                await persistence.newToy(p.make());
+                onClose();
+              }}
+            />
+          </li>
+        ))}
+      </ul>
+
+      <h3>{copy.panelMyToys}</h3>
       {items && items.length === 0 && <p class="hint">{copy.noToys}</p>}
       <ul class="toylist">
         {items?.map((m) => (
@@ -76,7 +97,7 @@ export function MyToys({ persistence, onClose }: { persistence: Persistence; onC
             <div class="toyinfo">
               <strong>{m.name}</strong>
               <span>
-                {m.parts} {copy.partsCount} · {when(m.updatedAt)}
+                {(m.parts === 1 ? copy.partsOne : copy.partsMany).replace('{n}', String(m.parts))} · {when(m.updatedAt)}
               </span>
             </div>
             {confirming === m.id ? (

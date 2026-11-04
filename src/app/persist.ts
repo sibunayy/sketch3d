@@ -85,10 +85,12 @@ export async function startPersistence(store: Store) {
       store.toast(copy.toastOpened);
     },
 
-    async newToy(): Promise<void> {
+    /** A new toy: blank, or starting from a ready-made one. */
+    async newToy(start: Doc = createDoc()): Promise<void> {
       await autosave.flush();
       currentToyId.value = newId();
-      store.load(createDoc());
+      store.load(start);
+      if (start.parts.length > 0) autosave.notify(start);
       store.toast(copy.toastNewToy);
     },
 

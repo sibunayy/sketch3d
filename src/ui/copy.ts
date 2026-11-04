@@ -17,7 +17,6 @@ export const copy = {
   btnSee3d: 'See in 3D',
   btnEditPart: 'Edit this part',
   btnClose: 'Close',
-  btnDismiss: 'Got it',
 
   // tool names (shown under each icon)
   toolSelect: 'Pick',
@@ -65,7 +64,7 @@ export const copy = {
   btnResetTurn: 'Reset turn',
   panelPart: 'This part',
   panelParts: 'Parts',
-  panelSeveral: 'parts picked',
+  panelSeveral: '{n} parts picked',
   labelRound: 'How round?',
   roundSquare: 'Square',
   roundSoft: 'Soft',
@@ -112,17 +111,18 @@ export const copy = {
   tipPaint: 'Drag over a part to paint it.',
 
   // saving and My toys
-  btnMyToys: 'My toys',
+  btnMyToys: 'See my toys',
   btnSaveFile: 'Save a file',
   btnNewToy: 'Make a new toy',
   btnOpenFile: 'Open a file',
   btnOpen: 'Open',
   btnDeleteToy: 'Delete this toy',
-  btnReallyDelete: 'Yes, delete it',
+  btnReallyDelete: 'Delete it',
   btnKeep: 'Keep it',
   panelMyToys: 'My toys',
   noToys: 'No saved toys yet. Your work saves by itself.',
-  partsCount: 'parts',
+  partsOne: '{n} part',
+  partsMany: '{n} parts',
   toastCantSave: "Your work can't be saved on this device. Tap Save to keep a copy.",
   toastFileSaved: 'Saved a file. Keep it somewhere safe.',
   toastOpened: 'Opened your toy.',
@@ -160,6 +160,24 @@ export const copy = {
   printFloatingFix: PRINT_MESSAGES.floating.fix,
   printNotWatertightMessage: PRINT_MESSAGES['not-watertight'].message,
   printNotWatertightFix: PRINT_MESSAGES['not-watertight'].fix,
+
+  // first-run guide and help
+  guideTitle: 'How to make a toy',
+  guideStep1Title: 'Draw a shape',
+  guideStep1Text: 'Tap Draw, then draw a loop with your finger. Or tap Shapes to pick one.',
+  guideStep2Title: 'Pull it and turn it',
+  guideStep2Text: 'Tap a part in 3D. Drag an arrow to move it. Drag a ring to turn it.',
+  guideStep3Title: 'Save to print',
+  guideStep3Text: 'Tap Save to print. We check your toy first, then you get a file.',
+  btnNext: 'Next',
+  btnBack: 'Back',
+  btnSkip: 'Skip',
+  btnStartMaking: 'Start making',
+  btnHelp: 'Help',
+
+  // ready-made toys
+  panelPresets: 'Ready-made toys',
+  btnUsePreset: 'Use this one',
 
   // views
   tabFront: 'Front',

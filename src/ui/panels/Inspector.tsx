@@ -68,7 +68,7 @@ export function Inspector({ store }: { store: Store }) {
 
   return (
     <div class="inspector-body">
-      <h2>{parts.length === 1 ? parts[0].name : `${parts.length} ${copy.panelSeveral}`}</h2>
+      <h2>{parts.length === 1 ? parts[0].name : copy.panelSeveral.replace('{n}', String(parts.length))}</h2>
 
       <div class="field">
         <strong>{copy.labelRound}</strong>

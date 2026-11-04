@@ -69,6 +69,16 @@ export function ThreeView({ store }: { store: Store }) {
   }, [doc, selection, mode]);
 
   const gizmoOn = mode === 'view' && selection.size === 1;
+  useEffect(() => {
+    if (!gizmoOn) return;
+    try {
+      if (localStorage.getItem('sketch3d.tip.gizmo')) return;
+      localStorage.setItem('sketch3d.tip.gizmo', '1');
+    } catch {
+      return;
+    }
+    store.toast(copy.tipGizmo); // shown once, the first time the handles appear
+  }, [gizmoOn, store]);
   // how big the toy is, so the child can see it against the limit
   const size = shown && shown.mesh.positions.length > 0 ? meshSize(shown.mesh) : null;
   const tooBig = !!size && Math.max(size.w, size.h, size.d) > BUILD_MM + 0.5;

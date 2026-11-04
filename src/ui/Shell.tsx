@@ -8,6 +8,7 @@ import { Toasts } from './components/Toast';
 import { Inspector } from './panels/Inspector';
 import { MyToys } from './panels/MyToys';
 import { PrintSheet } from './panels/PrintSheet';
+import { FirstRun, shouldShowGuide } from './panels/FirstRun';
 import type { Persistence } from '../app/persist';
 import { copy } from './copy';
 import { DrawCanvas } from './DrawCanvas';
@@ -68,6 +69,7 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toysOpen, setToysOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(shouldShowGuide);
   const status = persistence?.status.value ?? 'saving';
   const showing3d = view === '3d';
 
@@ -80,6 +82,7 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
         <span class="savestatus" data-status={status} role="status" data-testid="savestatus">
           {status === 'saved' ? copy.saved : status === 'saving' ? copy.saving : copy.notSaved}
         </span>
+        <Button label={copy.btnHelp} onClick={() => setGuideOpen(true)} />
         {persistence && <Button label={copy.btnMyToys} icon="views" onClick={() => setToysOpen(true)} />}
         {persistence && <Button label={copy.btnSaveFile} icon="save" onClick={() => persistence.saveFile()} />}
         <Button label={copy.btnSaveToPrint} icon="savebig" variant="primary" onClick={() => setPrintOpen(true)} />
@@ -144,6 +147,8 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
 
       {printOpen && <PrintSheet store={store} onClose={() => setPrintOpen(false)} />}
       {toysOpen && persistence && <MyToys persistence={persistence} onClose={() => setToysOpen(false)} />}
+
+      {guideOpen && <FirstRun onClose={() => setGuideOpen(false)} />}
 
       <Toasts store={store} />
     </div>
