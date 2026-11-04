@@ -58,4 +58,4 @@ README.md    This file
 ## Credits
 
 - Built with [three.js](https://threejs.org/) (MIT licence).
-- Made by Nathan, an education support worker in Ballarat, with help from Claude.
+- Vibe-coded by sib.
