@@ -22,3 +22,7 @@ jobs:
       - run: npm run size
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run test:e2e
+      # Speed check: prints the numbers and flags a slow build, but never blocks a merge
+      # (shared CI machines vary too much for a hard failure). Real devices are in docs/release-checklist.md.
+      - run: npm run bench
+        continue-on-error: true
