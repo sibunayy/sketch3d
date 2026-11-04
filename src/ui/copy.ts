@@ -179,6 +179,10 @@ export const copy = {
   panelPresets: 'Ready-made toys',
   btnUsePreset: 'Use this one',
 
+  // updates
+  toastUpdate: 'Update ready. Tap to restart.',
+  btnRestart: 'Restart',
+
   // views
   tabFront: 'Front',
   tabSide: 'Side',

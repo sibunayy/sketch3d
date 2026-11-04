@@ -49,7 +49,8 @@ legacy/       The old single-file prototype (reference only)
 - One plan task per branch. Write the failing test, see it fail, implement, see it pass, commit.
 - Keep commits small. Messages like `feat(core): chunked surface-nets mesher`.
 - CI runs lint, typecheck, unit tests, build, size check and e2e. A red CI blocks merging.
-- Pushing to `main` deploys to GitHub Pages after CI passes.
+- Pushing to `main` runs `.github/workflows/deploy.yml`: all checks, then publish `dist/` to GitHub Pages (base path `/sketch3d/`). Do the real-device checks in `docs/release-checklist.md` first.
+- Offline support is a service worker (vite-plugin-pwa, `src/app/pwa.ts`). It is feature-detected and the app never depends on it. Offline tests run against the built app (`npm run preview`, port 4174).
 
 ## Performance rules
 - The main thread must never run SDF or meshing code.

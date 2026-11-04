@@ -6,7 +6,7 @@ Built for primary-school students (about ages 9–11) and designed to run on low
 
 **Try it:** https://sibunayy.github.io/sketch3d/
 
-> **Status: rebuild in progress.** The app is being rebuilt as a fast, tested TypeScript app (see `docs/superpowers/plans/`). The original prototype now lives in `legacy/` and still works. The live link keeps serving the prototype until the rebuild has its own deploy step (Task 16), so do not point GitHub Pages at this branch before then.
+> **Status: the rebuild is feature-complete (Tasks 1–16) and waiting for real-device checks.** Follow `docs/release-checklist.md` on a Chromebook and an iPad before merging to `main`. Merging runs `.github/workflows/deploy.yml`, which publishes the app to GitHub Pages and replaces the prototype. The prototype stays in `legacy/` until the checklist is signed off.
 
 ## What you can do
 

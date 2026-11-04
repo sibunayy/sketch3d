@@ -87,7 +87,7 @@ describe('copy.ts: every word the child sees', () => {
   it('button labels start with a verb', () => {
     const VERBS = new Set([
       'undo', 'redo', 'save', 'draw', 'see', 'edit', 'close', 'make', 'delete', 'pick', 'reset', 'open', 'keep', 'show', 'melt',
-      'start', 'add', 'check', 'download', 'fill', 'use', 'turn', 'move', 'next', 'back', 'finish', 'skip', 'play', 'try', 'help', 'start',
+      'start', 'add', 'check', 'download', 'fill', 'use', 'turn', 'move', 'next', 'back', 'finish', 'skip', 'play', 'try', 'help', 'restart',
     ]);
     const buttons = entries.filter(([k]) => k.startsWith('btn'));
     expect(buttons.length).toBeGreaterThan(10);
