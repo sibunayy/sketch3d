@@ -207,6 +207,23 @@ export class Viewport {
     this.loseExtension?.restoreContext();
   }
 
+  /** A small picture of what is on screen, for the "My toys" list. */
+  snapshotBlob(maxSize = 160): Promise<Blob | null> {
+    if (this.lost) return Promise.resolve(null);
+    this.draw(); // draw and copy in the same moment, while the picture is still there
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    if (w === 0 || h === 0) return Promise.resolve(null);
+    const k = Math.min(1, maxSize / Math.max(w, h));
+    const small = document.createElement('canvas');
+    small.width = Math.max(1, Math.round(w * k));
+    small.height = Math.max(1, Math.round(h * k));
+    const g = small.getContext('2d');
+    if (!g) return Promise.resolve(null);
+    g.drawImage(this.canvas, 0, 0, small.width, small.height);
+    return new Promise((resolve) => small.toBlob((b) => resolve(b), 'image/png'));
+  }
+
   /** Draws right now and counts the colours on screen. Used by tests. */
   pixelStats(): { colours: number; nonBackground: number; total: number } {
     this.draw();

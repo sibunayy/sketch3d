@@ -316,3 +316,70 @@
   padding: 0 var(--s2);
   white-space: nowrap;
 }
+
+/* ---------- saving ---------- */
+.savestatus {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+.savestatus[data-status='not-saved'] {
+  color: var(--danger);
+  font-weight: 600;
+}
+.topbar .btn {
+  white-space: nowrap;
+}
+
+.mytoys {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: auto;
+  padding: var(--s6);
+  background: var(--bg);
+  display: grid;
+  align-content: start;
+  gap: var(--s4);
+}
+.mytoys-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+.mytoys h2 {
+  margin: 0;
+}
+.toylist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.toylist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3);
+  background: var(--panel);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+}
+.toylist li.current {
+  border-color: var(--accent);
+}
+.toylist img,
+.toylist .nopic {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  object-fit: contain;
+}
+.toyinfo {
+  flex: 1;
+  min-width: 140px;
+  display: grid;
+}

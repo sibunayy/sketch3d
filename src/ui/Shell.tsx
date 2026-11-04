@@ -6,6 +6,8 @@ import { IconButton } from './components/IconButton';
 import { Sheet } from './components/Sheet';
 import { Toasts } from './components/Toast';
 import { Inspector } from './panels/Inspector';
+import { MyToys } from './panels/MyToys';
+import type { Persistence } from '../app/persist';
 import { copy } from './copy';
 import { DrawCanvas } from './DrawCanvas';
 import { ThreeView } from './ThreeView';
@@ -60,9 +62,11 @@ function Picker({ store }: { store: Store }) {
  * The whole screen. Wide screens show the tools, the drawing view, the 3D view and the part settings side by side.
  * Narrower or taller screens show one view at a time, with a Draw / 3D switch and the settings in a sheet.
  */
-export function Shell({ store }: { store: Store }) {
+export function Shell({ store, persistence }: { store: Store; persistence: Persistence | null }) {
   const view = store.view.value;
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [toysOpen, setToysOpen] = useState(false);
+  const status = persistence?.status.value ?? 'saving';
   const showing3d = view === '3d';
 
   return (
@@ -71,6 +75,11 @@ export function Shell({ store }: { store: Store }) {
         <img src={`${import.meta.env.BASE_URL}icons/logo.webp`} alt="" width={40} height={40} />
         <h1>{copy.appName}</h1>
         <span class="spacer" />
+        <span class="savestatus" data-status={status} role="status" data-testid="savestatus">
+          {status === 'saved' ? copy.saved : status === 'saving' ? copy.saving : copy.notSaved}
+        </span>
+        {persistence && <Button label={copy.btnMyToys} icon="views" onClick={() => setToysOpen(true)} />}
+        {persistence && <Button label={copy.btnSaveFile} icon="save" onClick={() => persistence.saveFile()} />}
         <Button label={copy.btnSaveToPrint} icon="savebig" variant="primary" onClick={() => store.toast(copy.working)} />
       </header>
 
@@ -130,6 +139,8 @@ export function Shell({ store }: { store: Store }) {
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
         <Inspector store={store} />
       </Sheet>
+
+      {toysOpen && persistence && <MyToys persistence={persistence} onClose={() => setToysOpen(false)} />}
 
       <Toasts store={store} />
     </div>

@@ -109,6 +109,23 @@ export const copy = {
   tipSculpt: 'Drag on the toy to sculpt it.',
   tipPaint: 'Drag over a part to paint it.',
 
+  // saving and My toys
+  btnMyToys: 'My toys',
+  btnSaveFile: 'Save a file',
+  btnNewToy: 'Make a new toy',
+  btnOpenFile: 'Open a file',
+  btnOpen: 'Open',
+  btnDeleteToy: 'Delete this toy',
+  btnReallyDelete: 'Yes, delete it',
+  btnKeep: 'Keep it',
+  panelMyToys: 'My toys',
+  noToys: 'No saved toys yet. Your work saves by itself.',
+  partsCount: 'parts',
+  toastCantSave: "Your work can't be saved on this device. Tap Save to keep a copy.",
+  toastFileSaved: 'Saved a file. Keep it somewhere safe.',
+  toastOpened: 'Opened your toy.',
+  toastNewToy: 'Started a new toy.',
+
   // views
   tabFront: 'Front',
   tabSide: 'Side',
