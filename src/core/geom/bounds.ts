@@ -1,4 +1,10 @@
-import type { Vec2 } from './vec';
+import type { Vec2, Vec3 } from './vec';
+
+/** An axis-aligned box in 3D, millimetres. */
+export interface Box3 {
+  min: Vec3;
+  max: Vec3;
+}
 
 export interface BBox {
   x0: number;
