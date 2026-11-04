@@ -1,21 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-type Api = {
-  app: {
-    doc: { value: { parts: { id: string; z: number; outline: number[][]; cut: boolean }[]; grooves: unknown[] } };
-    selection: { value: Set<string> };
-    view: { value: string };
-    tool: { value: string };
-  };
-  latestMesh: { value: { mesh: { positions: Float32Array } } | null };
-};
-declare global {
-  interface Window {
-    __sketch3d: Api;
-  }
-}
-
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');

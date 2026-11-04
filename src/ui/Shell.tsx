@@ -5,6 +5,7 @@ import { Button } from './components/Button';
 import { IconButton } from './components/IconButton';
 import { Sheet } from './components/Sheet';
 import { Toasts } from './components/Toast';
+import { Inspector } from './panels/Inspector';
 import { copy } from './copy';
 import { DrawCanvas } from './DrawCanvas';
 import { ThreeView } from './ThreeView';
@@ -110,7 +111,7 @@ export function Shell({ store }: { store: Store }) {
       </main>
 
       <aside class="inspector" aria-label="Part settings">
-        <p class="hint">{copy.inspectorEmpty}</p>
+        <Inspector store={store} />
       </aside>
 
       <div class="switch">
@@ -127,7 +128,7 @@ export function Shell({ store }: { store: Store }) {
       </div>
 
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
-        <p class="hint">{copy.inspectorEmpty}</p>
+        <Inspector store={store} />
       </Sheet>
 
       <Toasts store={store} />

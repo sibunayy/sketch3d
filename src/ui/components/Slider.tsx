@@ -1,3 +1,7 @@
+import { useRef } from 'preact/hooks';
+
+let nextSliderId = 1;
+
 export interface SliderProps {
   label: string;
   value: number;
@@ -16,7 +20,8 @@ export interface SliderProps {
 
 /** A slider with a big thumb, a live value, and one "done" moment when let go. */
 export function Slider({ label, value, min, max, step = 1, unit = '', display, onInput, onCommit }: SliderProps) {
-  const id = `slider-${label.replace(/\W+/g, '-').toLowerCase()}`;
+  // unique per slider, because the same panel can be on the page twice (side panel and sheet)
+  const id = useRef(`slider-${nextSliderId++}`).current;
   return (
     <div class="slider">
       <label for={id}>
