@@ -101,7 +101,7 @@ export function Shell({ store }: { store: Store }) {
         </section>
 
         <section class="pane pane-3d" data-active={showing3d} aria-label="3D view">
-          <ThreeView />
+          <ThreeView store={store} />
         </section>
 
         <div class="history" role="group" aria-label={copy.labelHistory}>

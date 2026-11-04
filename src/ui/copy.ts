@@ -86,6 +86,29 @@ export const copy = {
   hole: 'Hole',
   toastCopied: 'Made a copy.',
 
+  // 3D view
+  modeMove: 'Move',
+  modeSculpt: 'Sculpt',
+  modePaint: 'Paint',
+  labelModes: 'What to do in 3D',
+  sculptPull: 'Pull',
+  sculptPush: 'Push',
+  sculptSmooth: 'Smooth',
+  sculptGrab: 'Grab',
+  labelSculptTool: 'Sculpt tool',
+  labelSculptSize: 'Brush size',
+  labelSculptStrength: 'Brush strength',
+  sizeSmall: 'Small',
+  sizeMedium: 'Medium',
+  sizeLarge: 'Large',
+  strengthGentle: 'Gentle',
+  strengthFirm: 'Firm',
+  btnFill: 'Fill the part',
+  tipPick: 'Tap a part to pick it. Drag to turn the view.',
+  tipGizmo: 'Drag an arrow to move, a ring to turn, or the white cube to resize.',
+  tipSculpt: 'Drag on the toy to sculpt it.',
+  tipPaint: 'Drag over a part to paint it.',
+
   // views
   tabFront: 'Front',
   tabSide: 'Side',
@@ -95,10 +118,10 @@ export const copy = {
   labelHistory: 'Undo and redo',
 
   // 3D view
-  viewHome: 'Home',
-  viewFront: 'Front',
-  viewSide: 'Side',
-  viewTop: 'Top',
+  viewHome: 'Whole toy',
+  viewFront: 'From front',
+  viewSide: 'From side',
+  viewTop: 'From above',
   viewLost: 'The 3D view stopped. Tap to restart it.',
 
   // empty and status

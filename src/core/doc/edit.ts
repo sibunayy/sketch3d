@@ -125,3 +125,74 @@ export function deleteParts(doc: Doc, ids: readonly string[]): void {
   doc.parts = doc.parts.filter((p) => !gone.has(p.id));
   doc.dabs = doc.dabs.filter((d) => !gone.has(d.partId));
 }
+
+// ---------- 3D handle edits (move, turn, resize) ----------
+
+export type EditAxis = 'x' | 'y' | 'z';
+
+/** With symmetry on, a twin is only a reflection, so edits go to the part it follows. */
+export function editTarget(doc: Doc, id: string): { id: string; mirrored: boolean } | null {
+  const p = doc.parts.find((q) => q.id === id);
+  if (!p) return null;
+  return doc.settings.symmetry && p.twinOf && doc.parts.some((q) => q.id === p.twinOf) ? { id: p.twinOf, mirrored: true } : { id, mirrored: false };
+}
+
+/** A part as it was when a drag began. Every drag step is worked out from this, so steps never add up errors. */
+export interface PartSnapshot {
+  /** The part that will really change (the one a twin follows). */
+  id: string;
+  mirrored: boolean;
+  outline: Part['outline'];
+  z: number;
+  rot: Part['rot'];
+  depthMm: number;
+}
+
+export function snapshotPart(doc: Doc, id: string): PartSnapshot | null {
+  const t = editTarget(doc, id);
+  const p = t && doc.parts.find((q) => q.id === t.id);
+  if (!t || !p) return null;
+  return { id: t.id, mirrored: t.mirrored, outline: p.outline.map((q) => [...q] as [number, number]), z: p.z, rot: { ...p.rot }, depthMm: p.depthMm };
+}
+
+const r1 = (v: number) => Math.round(v * 10) / 10;
+
+/** Slides the part `amount` millimetres along a world axis from where it started. */
+export function applyMove(doc: Doc, id: string, axis: EditAxis, amount: number, from: PartSnapshot): void {
+  const p = doc.parts.find((q) => q.id === from.id);
+  if (!p) return;
+  const dx = axis === 'x' ? amount * (from.mirrored ? -1 : 1) : 0;
+  const dy = axis === 'y' ? amount : 0;
+  p.outline = from.outline.map(([x, y]): [number, number] => [r1(x + dx), r1(y + dy)]);
+  p.z = axis === 'z' ? r1(from.z + amount) : from.z;
+  void id;
+}
+
+/** Turns the part `deg` degrees about a world axis from the angles it started with. */
+export function applyTurn(doc: Doc, id: string, axis: EditAxis, deg: number, fromRot: Part['rot']): void {
+  const target = editTarget(doc, id);
+  const p = target && doc.parts.find((q) => q.id === target.id);
+  if (!target || !p) return;
+  const flip = target.mirrored && axis !== 'x' ? -1 : 1; // a mirror image turns the other way
+  const r = { ...fromRot };
+  r[axis] = r1(fromRot[axis] + deg * flip);
+  p.rot = { x: clamp(r.x, LIMITS.rotDeg[0], LIMITS.rotDeg[1]), y: clamp(r.y, LIMITS.rotDeg[0], LIMITS.rotDeg[1]), z: clamp(r.z, LIMITS.rotDeg[0], LIMITS.rotDeg[1]) };
+}
+
+/** Scales width, height and thickness together about the part's middle. */
+export function applyResize(doc: Doc, id: string, k: number, from: PartSnapshot): void {
+  const p = doc.parts.find((q) => q.id === from.id);
+  if (!p) return;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const [x, y] of from.outline) {
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
+  }
+  const cx = (x0 + x1) / 2;
+  const cy = (y0 + y1) / 2;
+  p.outline = from.outline.map(([x, y]): [number, number] => [r1(cx + (x - cx) * k), r1(cy + (y - cy) * k)]);
+  p.depthMm = clamp(r1(from.depthMm * k), LIMITS.depthMm[0], LIMITS.depthMm[1]);
+  void id;
+}

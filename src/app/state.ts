@@ -3,9 +3,13 @@ import type { ReadonlySignal } from '@preact/signals';
 import { History } from '../core/doc/history';
 import { DocError, createDoc, validateDoc } from '../core/doc/schema';
 import type { Doc } from '../core/doc/types';
+import type { DabType } from '../core/doc/types';
+import type { SculptSize, SculptStrength } from '../core/doc/sculpt';
 import { copy } from '../ui/copy';
 
 export type ViewName = 'front' | 'side' | '3d';
+/** What the 3D view is for right now: looking and moving parts, sculpting, or painting. */
+export type Mode3d = 'view' | 'sculpt' | 'paint';
 export interface Toast {
   id: number;
   message: string;
@@ -28,6 +32,11 @@ export function createStore(initial: Doc = createDoc()) {
   const toasts = signal<Toast[]>([]);
   /** The Multi button: while on, tapping parts adds them to the selection. */
   const multi = signal(false);
+  const mode3d = signal<Mode3d>('view');
+  const sculptTool = signal<DabType>('pull');
+  const sculptSize = signal<SculptSize>('m');
+  const sculptStrength = signal<SculptStrength>('gentle');
+  const paintColour = signal('#e5484d');
 
   let history = new History(initial, MAX_STEPS);
   // The selection to go back to for each history step, kept in step with History.
@@ -178,6 +187,11 @@ export function createStore(initial: Doc = createDoc()) {
     view,
     toasts,
     multi,
+    mode3d,
+    sculptTool,
+    sculptSize,
+    sculptStrength,
+    paintColour,
     canUndo: canUndo as ReadonlySignal<boolean>,
     canRedo: canRedo as ReadonlySignal<boolean>,
     get history() {

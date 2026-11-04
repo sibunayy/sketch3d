@@ -16,8 +16,20 @@ import { OrbitCamera } from './camera';
 import type { CameraPreset } from './camera';
 import { FrameScheduler } from './frameScheduler';
 import { ghostMaterial, rgb, toyMaterial } from './materials';
+import { projectToScreen, screenRay } from './picking';
 
 export const MAX_PIXEL_RATIO = 2;
+export const FOV_DEG = 40;
+
+/** Lets an editing mode take over a finger or mouse press on the 3D view (instead of turning the camera). */
+export interface ViewportInteraction {
+  /** Return true to take over this pointer. */
+  down(e: PointerEvent): boolean;
+  move(e: PointerEvent): void;
+  up(e: PointerEvent): void;
+  /** A short press that did not move and was not taken over. */
+  tap(e: PointerEvent): void;
+}
 
 export interface ViewportOptions {
   /** Smooth edges. Left off on weak devices. */
@@ -32,7 +44,13 @@ export class Viewport {
   readonly camera = new OrbitCamera();
   private readonly renderer: WebGLRenderer;
   private readonly scene = new Scene();
-  private readonly three = new PerspectiveCamera(40, 1, 1, 2000);
+  private readonly three = new PerspectiveCamera(FOV_DEG, 1, 1, 2000);
+  /** Things drawn on top of the toy (the gizmo). Depth is cleared first so they are never hidden inside it. */
+  readonly overlay = new Scene();
+  interaction: ViewportInteraction | null = null;
+  private takenBy: number | null = null;
+  private downInfo = new Map<number, { x: number; y: number; t: number; moved: boolean }>();
+  private readonly beforeDraw: (() => void)[] = [];
   private readonly frames: FrameScheduler;
   private readonly toy: Mesh;
   private readonly ghost: Mesh;
@@ -46,6 +64,7 @@ export class Viewport {
 
   constructor(private readonly canvas: HTMLCanvasElement, opts: ViewportOptions = {}) {
     this.renderer = new WebGLRenderer({ canvas, antialias: opts.antialias ?? true, alpha: false });
+    this.renderer.autoClear = false;
     this.renderer.setClearColor(new Color('#eef1f4'));
     this.loseExtension = this.renderer.getContext().getExtension('WEBGL_lose_context');
 
@@ -107,6 +126,21 @@ export class Viewport {
     this.requestRender();
   }
 
+  /** Centre the view on a mesh and back off far enough to see all of it. */
+  fitMesh(mesh: MeshData): void {
+    const p = mesh.positions;
+    if (p.length === 0) return;
+    const min: [number, number, number] = [Infinity, Infinity, Infinity];
+    const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < p.length; i += 3) {
+      for (let a = 0; a < 3; a++) {
+        if (p[i + a] < min[a]) min[a] = p[i + a];
+        if (p[i + a] > max[a]) max[a] = p[i + a];
+      }
+    }
+    this.fit({ min, max });
+  }
+
   fit(box: Box3): void {
     this.camera.fit(box);
     this.requestRender();
@@ -130,6 +164,34 @@ export class Viewport {
     this.three.aspect = w / h;
     this.three.updateProjectionMatrix();
     this.requestRender();
+  }
+
+  /** Called just before every draw, so overlays can follow the camera. */
+  onBeforeDraw(cb: () => void): void {
+    this.beforeDraw.push(cb);
+  }
+
+  /** The ray from the camera through a point on the page. */
+  rayAt(clientX: number, clientY: number) {
+    const r = this.canvas.getBoundingClientRect();
+    const ndc: [number, number] = [((clientX - r.left) / r.width) * 2 - 1, 1 - ((clientY - r.top) / r.height) * 2];
+    return screenRay(this.camera, FOV_DEG, r.width / r.height, ndc);
+  }
+
+  /** Where a point of the toy is on the page, or null if it is behind the camera. */
+  screenOf(p: [number, number, number]): [number, number] | null {
+    const r = this.canvas.getBoundingClientRect();
+    const s = projectToScreen(this.camera, FOV_DEG, r.width / r.height, r.width, r.height, p);
+    return s ? [r.left + s[0], r.top + s[1]] : null;
+  }
+
+  canvasRect(): DOMRect {
+    return this.canvas.getBoundingClientRect();
+  }
+
+  get size(): { width: number; height: number } {
+    const r = this.canvas.getBoundingClientRect();
+    return { width: r.width, height: r.height };
   }
 
   onContextLost(cb: () => void): void {
@@ -176,7 +238,11 @@ export class Viewport {
     const [x, y, z] = this.camera.position();
     this.three.position.set(x, y, z);
     this.three.lookAt(this.camera.target[0], this.camera.target[1], this.camera.target[2]);
+    for (const cb of this.beforeDraw) cb();
+    this.renderer.clear();
     this.renderer.render(this.scene, this.three);
+    this.renderer.clearDepth();
+    this.renderer.render(this.overlay, this.three);
   }
 
   private listen(target: EventTarget, type: string, fn: (e: Event) => void): void {
@@ -186,11 +252,22 @@ export class Viewport {
 
   private onDown(e: PointerEvent): void {
     this.canvas.setPointerCapture?.(e.pointerId);
+    this.downInfo.set(e.pointerId, { x: e.clientX, y: e.clientY, t: e.timeStamp, moved: false });
+    if (this.pointers.size === 0 && this.takenBy === null && this.interaction?.down(e)) {
+      this.takenBy = e.pointerId; // an editing mode has this finger
+      return;
+    }
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.pointers.size === 2) this.lastPinch = this.pinchDistance();
   }
 
   private onMove(e: PointerEvent): void {
+    const info = this.downInfo.get(e.pointerId);
+    if (info && Math.hypot(e.clientX - info.x, e.clientY - info.y) > 6) info.moved = true;
+    if (this.takenBy === e.pointerId) {
+      this.interaction?.move(e);
+      return;
+    }
     const p = this.pointers.get(e.pointerId);
     if (!p) return;
     const dx = e.clientX - p.x;
@@ -210,6 +287,14 @@ export class Viewport {
   }
 
   private onUp(e: PointerEvent): void {
+    const info = this.downInfo.get(e.pointerId);
+    this.downInfo.delete(e.pointerId);
+    if (this.takenBy === e.pointerId) {
+      this.takenBy = null;
+      this.interaction?.up(e);
+      return;
+    }
+    if (info && !info.moved && e.type === 'pointerup' && e.timeStamp - info.t < 500 && this.pointers.size <= 1) this.interaction?.tap(e);
     this.pointers.delete(e.pointerId);
     this.lastPinch = this.pointers.size === 2 ? this.pinchDistance() : 0;
   }
