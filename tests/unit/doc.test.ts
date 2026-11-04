@@ -20,7 +20,7 @@ describe('createDoc', () => {
     const d = createDoc();
     expect(d.version).toBe(3);
     expect(d.parts).toEqual([]);
-    expect(d.settings.build).toEqual({ w: 110, h: 110, d: 70 });
+    expect(d.settings.build).toEqual({ w: 100, h: 100, d: 100 });
     expect(() => validateDoc(d)).not.toThrow();
   });
 });

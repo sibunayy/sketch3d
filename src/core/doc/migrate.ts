@@ -4,7 +4,7 @@ import type { Vec2, Vec3 } from '../geom/vec';
 import { dirToLocal, dirToWorld, localToWorld, partFrame, worldToLocal } from './frame';
 import type { PartFrame } from './frame';
 import { COLOR_PATTERN, DocError, LIMITS, cantOpen, createDoc, notAToy, validateDoc } from './schema';
-import { DOC_VERSION, PROFILE_MAX, PROFILE_SAMPLES } from './types';
+import { BUILD_MM, DOC_VERSION, PROFILE_MAX, PROFILE_SAMPLES } from './types';
 import type { Dab, DabType, Doc, Groove, Part, PartKind } from './types';
 
 type Rec = Record<string, unknown>;
@@ -40,6 +40,8 @@ export function migrate(input: unknown): Doc {
       doc = step(doc);
       version++;
     }
+    // toys saved while the limit was a different size open with the current one
+    if (isRec(doc.settings)) doc = { ...doc, settings: { ...doc.settings, build: { w: BUILD_MM, h: BUILD_MM, d: BUILD_MM } } };
     return validateDoc(doc);
   }
 

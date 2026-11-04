@@ -13,7 +13,7 @@ Sketch3D is a free web app where kids (about ages 9–11, many neurodiverse, eas
 - **Devices:** low-end school Chromebooks (4 GB RAM, weak GPU) in Chrome, and iPads in Chrome. **Chrome on iOS runs on Apple's WebKit engine**, so build and test for Safari behaviour. Touch-first; mouse and trackpad must also work.
 - **Budgets:** JS under 500 KB gzipped (the build fails past that). 30 fps or better while dragging, sculpting and rotating, and no single frame task over 50 ms. Render on demand, not in a constant loop. Cap `devicePixelRatio` at 2.
 - **Privacy:** no account, no login, no tracking, no network calls at runtime. Student work never leaves the device.
-- **Print:** build area 110 × 110 × 70 mm; binary STL in millimetres.
+- **Print:** a toy may be at most 100 × 100 × 100 mm (Nathan's printer is a Bambu P1S with a 256 mm bed, so this keeps prints small and quick); binary STL in millimetres. The limit lives in `BUILD_MM` in `src/core/doc/types.ts`.
 
 ## Stack (do not add to it without asking Nathan)
 Vite, TypeScript (strict), three.js (named imports only), Preact + @preact/signals, plain CSS custom properties, Web Worker with typed arrays, `idb-keyval`, Vitest, Playwright (Chromium and WebKit), `size-limit`.

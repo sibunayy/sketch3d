@@ -11,6 +11,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import type { Box3 } from '../core/geom/bounds';
+import { BUILD_MM } from '../core/doc/types';
 import type { MeshData } from '../core/geom/surfaceNets';
 import { OrbitCamera } from './camera';
 import type { CameraPreset } from './camera';
@@ -73,8 +74,8 @@ export class Viewport {
     sun.position.set(60, 120, 90);
     this.scene.add(sun);
 
-    // the 110 mm build plate
-    const plate = new GridHelper(110, 11, 0x9aa5b1, 0xc9d1d9);
+    // the build plate: the biggest a toy may be, in squares of 10 mm
+    const plate = new GridHelper(BUILD_MM, BUILD_MM / 10, 0x9aa5b1, 0xc9d1d9);
     this.scene.add(plate);
 
     this.toy = new Mesh(new BufferGeometry(), toyMaterial());

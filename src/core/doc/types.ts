@@ -2,6 +2,12 @@ import type { Vec2, Vec3 } from '../geom/vec';
 
 export const DOC_VERSION = 3 as const;
 
+/**
+ * The biggest a toy may be in any direction, in millimetres. The printer (a Bambu P1S) has a 256 mm bed;
+ * toys are kept to 100 mm so they print quickly and fit with room to spare. Change it here, nowhere else.
+ */
+export const BUILD_MM = 100 as const;
+
 export const PART_KINDS = [
   'circle', 'box', 'star', 'heart', 'egg', 'capsule', 'triangle', 'drop', 'moon',
   'draw', 'limb', 'eyes', 'smile',
@@ -87,6 +93,6 @@ export interface Doc {
   grooves: Groove[];
   settings: {
     symmetry: boolean;
-    build: { w: 110; h: 110; d: 70 };
+    build: { w: typeof BUILD_MM; h: typeof BUILD_MM; d: typeof BUILD_MM };
   };
 }

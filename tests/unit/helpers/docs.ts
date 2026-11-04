@@ -37,7 +37,7 @@ export function makeDoc(parts: Part[] = [makePart()]): Doc {
     parts,
     dabs: [],
     grooves: [],
-    settings: { symmetry: true, build: { w: 110, h: 110, d: 70 } },
+    settings: { symmetry: true, build: { w: 100, h: 100, d: 100 } },
   };
 }
 

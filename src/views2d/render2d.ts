@@ -1,4 +1,5 @@
 import { sideOutline } from '../core/doc/partOps';
+import { BUILD_MM } from '../core/doc/types';
 import type { Doc } from '../core/doc/types';
 import { effectiveParts } from '../core/geom/scene';
 import type { MeshData } from '../core/geom/surfaceNets';
@@ -6,8 +7,8 @@ import type { Vec2 } from '../core/geom/vec';
 import type { View2D } from './tools';
 import type { ViewTransform } from './viewTransform';
 
-/** The 110 x 110 mm build area, as it appears in each view. */
-export const BUILD_BOX = { x0: -55, y0: -5, x1: 55, y1: 115 };
+/** The biggest a toy may be, as it appears in each view: centred across, standing on the floor. */
+export const BUILD_BOX = { x0: -BUILD_MM / 2, y0: 0, x1: BUILD_MM / 2, y1: BUILD_MM };
 
 function polygon(ctx: CanvasRenderingContext2D, vt: ViewTransform, pts: readonly Vec2[]) {
   ctx.beginPath();

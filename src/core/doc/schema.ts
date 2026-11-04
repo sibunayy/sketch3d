@@ -1,4 +1,4 @@
-import { DOC_VERSION, PART_KINDS, PROFILE_MAX, PROFILE_SAMPLES } from './types';
+import { BUILD_MM, DOC_VERSION, PART_KINDS, PROFILE_MAX, PROFILE_SAMPLES } from './types';
 import type { Doc } from './types';
 
 /** Allowed ranges. Shared with migrate() so old saves are squeezed into the same limits. */
@@ -69,7 +69,7 @@ export function createDoc(): Doc {
     parts: [],
     dabs: [],
     grooves: [],
-    settings: { symmetry: true, build: { w: 110, h: 110, d: 70 } },
+    settings: { symmetry: true, build: { w: BUILD_MM, h: BUILD_MM, d: BUILD_MM } },
   };
 }
 
@@ -164,7 +164,7 @@ export function validateDoc(input: unknown): Doc {
 
   if (!isRec(settings) || typeof settings.symmetry !== 'boolean') throw cantOpen('settings.symmetry');
   const b = settings.build;
-  if (!isRec(b) || b.w !== 110 || b.h !== 110 || b.d !== 70) throw cantOpen('settings.build');
+  if (!isRec(b) || b.w !== BUILD_MM || b.h !== BUILD_MM || b.d !== BUILD_MM) throw cantOpen('settings.build');
 
   return structuredClone(input) as unknown as Doc;
 }

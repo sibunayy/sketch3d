@@ -21,7 +21,7 @@ Built for primary-school students (about ages 9–11) and designed to run on low
 - **Paint:** pick a colour or fill a part.
 - **Multi-select:** hold Shift, or use the Multi button, to move, colour, copy or delete several parts at once.
 - **Presets:** start from a ready-made character.
-- **Save to print:** exports an STL file sized to fit a 110 × 110 × 70 mm build area.
+- **Save to print:** exports an STL file. Toys are limited to 100 × 100 × 100 mm (the printer is a Bambu P1S with a 256 mm bed), and the app shows how big the toy is.
 
 ## Using it
 
