@@ -1,3 +1,4 @@
+import { STL_MESSAGES } from '../core/mesh/messages';
 import { PRINT_MESSAGES } from '../core/print/messages';
 
 /**
@@ -122,6 +123,7 @@ export const copy = {
   btnSaveFile: 'Save a file',
   btnNewToy: 'Make a new toy',
   btnOpenFile: 'Open a file',
+  btnAddStl: 'Add an STL file',
   btnOpen: 'Open',
   btnDeleteToy: 'Delete this toy',
   btnReallyDelete: 'Delete it',
@@ -133,6 +135,16 @@ export const copy = {
   toastCantSave: "Your work can't be saved on this device. Tap Save to keep a copy.",
   toastFileSaved: 'Saved a file. Keep it somewhere safe.',
   toastOpened: 'Opened your toy.',
+  stlOpening: STL_MESSAGES.opening,
+  stlAdded: STL_MESSAGES.added,
+  stlMadeSmaller: STL_MESSAGES.madeSmaller,
+  stlMadeBigger: STL_MESSAGES.madeBigger,
+  stlHasGaps: STL_MESSAGES.hasGaps,
+  stlBroken: STL_MESSAGES.broken,
+  stlNotAShape: STL_MESSAGES.notAShape,
+  stlEmpty: STL_MESSAGES.empty,
+  stlTooDetailed: STL_MESSAGES.tooDetailed,
+  stlTooBig: STL_MESSAGES.tooBig,
   toastNewToy: 'Started a new toy.',
 
   // Save to print

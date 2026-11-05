@@ -136,11 +136,11 @@ test('a toy saved to a file opens again from that file, and a wrong file gets a 
   expect(await parts(page)).toBe(0);
 
   await page.getByRole('button', { name: 'My toys' }).click();
-  await page.locator('input[type="file"]').setInputFiles(path!);
+  await page.getByRole('dialog', { name: 'My toys' }).locator('input[type="file"]').setInputFiles(path!);
   await expect.poll(() => parts(page)).toBe(2);
 
   await page.getByRole('button', { name: 'My toys' }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
+  await page.getByRole('dialog', { name: 'My toys' }).locator('input[type="file"]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
   await expect(page.getByText("That file isn't a Sketch3D toy.")).toBeVisible();
   expect(await parts(page)).toBe(2); // nothing was lost
 });

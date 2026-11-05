@@ -1,3 +1,4 @@
+import { base64Length } from '../mesh/base64';
 import { BUILD_MM, DOC_VERSION, PART_KINDS, PROFILE_MAX, PROFILE_SAMPLES } from './types';
 import type { Doc } from './types';
 
@@ -21,6 +22,11 @@ export const LIMITS = {
   dabRadius: [0.1, 100],
   dabStrength: [0, 5],
   grooveRadius: [0.1, 20],
+  meshSizeMm: [0.5, 400],
+  meshCells: [4, 80],
+  meshCellMm: [0.01, 40],
+  meshStep: [0.001, 10],
+  meshBytes: 300_000,
 } as const;
 
 export const COLOR_PATTERN = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -59,7 +65,7 @@ const shortName = (v: unknown): string => {
 function partError(part: Rec, index: number, key: string, problem: string): DocError {
   return new DocError(
     `The part "${shortName(part.name)}" has ${problem}, so the toy can't open. Try opening an earlier copy.`,
-    `parts[${index}].${key} = ${JSON.stringify(part[key]) ?? String(part[key])}`,
+    `parts[${index}].${key} = ${(JSON.stringify(part[key]) ?? String(part[key])).slice(0, 200)}`,
   );
 }
 
@@ -109,6 +115,25 @@ function checkPart(p: unknown, i: number): asserts p is Rec {
     if (!isRec(pr) || !ok(pr.front) || !ok(pr.back)) throw bad('profile', 'a side shape that does not work');
   }
   if (p.twinOf !== undefined && typeof p.twinOf !== 'string') throw bad('twinOf', 'a link to another part that does not work');
+
+  if (p.kind === 'import') checkMesh(p, bad);
+  else if (p.mesh !== undefined) throw bad('mesh', 'a 3D shape it should not have');
+}
+
+function checkMesh(p: Rec, bad: (key: string, problem: string) => DocError): void {
+  const m = p.mesh;
+  const WRONG = 'a 3D shape that does not work';
+  if (!isRec(m)) throw bad('mesh', WRONG);
+  const n = m.n;
+  const size = m.size;
+  if (!Array.isArray(n) || n.length !== 3 || !n.every((v) => Number.isInteger(v) && inRange(v, LIMITS.meshCells))) throw bad('mesh', WRONG);
+  if (!Array.isArray(size) || size.length !== 3 || !size.every((v) => inRange(v, LIMITS.meshSizeMm))) throw bad('mesh', WRONG);
+  if (!inRange(m.cell, LIMITS.meshCellMm) || !inRange(m.step, LIMITS.meshStep)) throw bad('mesh', WRONG);
+  if (m.flipX !== undefined && typeof m.flipX !== 'boolean') throw bad('mesh', WRONG);
+  const points = (n[0] as number) * (n[1] as number) * (n[2] as number);
+  if (typeof m.data !== 'string' || m.data.length > LIMITS.meshBytes || m.data.length !== base64Length(points) || !/^[A-Za-z0-9+/]*={0,2}$/.test(m.data)) {
+    throw bad('mesh', WRONG);
+  }
 }
 
 /**

@@ -48,15 +48,19 @@ function PartsStrip({ store }: { store: Store }) {
  * only that group's controls show, large and close to the drawing. Nothing is hidden at the side.
  */
 export function ContextBar({ store }: { store: Store }) {
-  const [group, setGroup] = useState<Group>('shape');
+  const [picked, setGroup] = useState<Group>('shape');
   const e = usePartEditing(store);
   const has = e.parts.length > 0;
+  // a shape opened from a file keeps its own form, so it has no Shape or Stretch settings
+  const fromFile = has && e.parts.every((p) => p.kind === 'import');
+  const groups = fromFile ? GROUPS.filter((g) => g.id !== 'shape' && g.id !== 'stretch') : GROUPS;
+  const group = groups.some((g) => g.id === picked) ? picked : groups[0].id;
 
   return (
     <section class="contextbar" aria-label={copy.labelContextBar}>
       <PartsStrip store={store} />
       <div class="ctx-tabs" role="group" aria-label={copy.labelWhatToChange}>
-        {GROUPS.map((g) => (
+        {groups.map((g) => (
           <button
             key={g.id}
             type="button"

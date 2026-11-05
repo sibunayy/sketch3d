@@ -1,6 +1,7 @@
 import { rotationMatrix } from '../doc/frame';
 import type { Part } from '../doc/types';
 import { bbox } from './bounds';
+import { buildMeshPartField } from './meshPartField';
 import type { Box3 } from './bounds';
 import { OutlineField, outlineSignature } from './outlineField';
 import { PROF_MIN } from './profile';
@@ -31,6 +32,7 @@ const PROFILE_TABLE = 64;
  * `distance` does no allocation: it is the hot loop of the mesher.
  */
 export function buildPartField(part: Part, opts: FieldOptions = {}): PartField {
+  if (part.kind === 'import' && part.mesh) return buildMeshPartField(part);
   const cell = opts.cell ?? 0.75;
   const margin = opts.margin ?? Math.max(part.blend, 0) + 8;
   const bb = bbox(part.outline);

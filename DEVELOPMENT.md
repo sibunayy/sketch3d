@@ -41,6 +41,7 @@ legacy/       The old single-file prototype (reference only)
 - `SideProfile`: `{ front: number[]; back: number[] }`, 64 samples each, normalised by half the depth, maximum 1.8.
 - `Dab`: a sculpt edit stored in the **part's local space**, so it follows the part when the part moves.
 - `Groove`: a carved line (the Crease tool).
+- A part of kind `import` is a shape opened from an STL file. It keeps a small signed-distance grid (`mesh`, base64) built once in a worker by `src/core/mesh/`; `buildMeshPartField` samples it so it moves, resizes, turns, melts and mirrors like any part. Its outline is only the front silhouette. No taper, squash or side profile.
 - Documents carry a `version`. `migrate()` upgrades old saves, including the prototype's `localStorage` key `sketch3d.v2`.
 - Rotation is applied about the part's bounding-box centre, in the order Z then Y then X.
 - **Front view** maps screen (x, y) to world (x, y). **Side view** maps screen (x, y) to world (z, y).

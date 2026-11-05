@@ -20,6 +20,7 @@ Built for primary-school students (about ages 9–11) and designed to run on low
 - **Sculpt mode:** push and pull the surface for finer detail.
 - **Paint:** pick a colour or fill a part.
 - **Multi-select:** hold Shift, or use the Multi button, to move, colour, copy or delete several parts at once.
+- **Add an STL file:** open a 3D shape from a file. It becomes one solid part you can move, resize, turn, colour, melt and cut with. It is made smaller if it is over 100 mm; a note says if it has gaps.
 - **Presets:** start from a ready-made character.
 - **Save to print:** exports an STL file. Toys are limited to 100 × 100 × 100 mm (the printer is a Bambu P1S with a 256 mm bed), and the app shows how big the toy is.
 
@@ -61,6 +62,7 @@ The rebuild keeps the same ideas, with the maths in a pure TypeScript core that 
 - The Front and Side outlines don't follow a part's rotation (the pink outline does).
 - The gizmo resizes uniformly only, and is hidden when several parts are selected.
 - A Tail/arm drawn in Side view is a plain part, with no bend or width sliders.
+- Shapes opened from an STL file are soft on very fine detail, and can't be reshaped or made thicker with the sliders.
 - Tested in desktop browsers; not yet verified on every Chromebook or iPad model.
 
 ## Project layout

@@ -10,7 +10,7 @@ export const BUILD_MM = 100 as const;
 
 export const PART_KINDS = [
   'circle', 'box', 'star', 'heart', 'egg', 'capsule', 'triangle', 'drop', 'moon',
-  'draw', 'limb', 'eyes', 'smile',
+  'draw', 'limb', 'eyes', 'smile', 'import',
 ] as const;
 export type PartKind = (typeof PART_KINDS)[number];
 
@@ -28,6 +28,29 @@ export interface SideProfile {
   front: number[];
   back: number[];
 }
+
+/**
+ * A shape opened from an STL file, kept as a grid of distances to its skin (negative inside).
+ * The grid is measured in the shape's size when it was opened; the part's outline box and thickness
+ * stretch it. Grid point (i, j, k) sits at `-size / 2 - PAD * cell + (i, j, k) * cell` from the middle.
+ */
+export interface PartMesh {
+  /** Size of the shape when it was opened, millimetres (width, height, depth). */
+  size: Vec3;
+  /** Number of grid points along x, y and z. */
+  n: [number, number, number];
+  /** Distance between grid points, millimetres. */
+  cell: number;
+  /** Millimetres for each fine step of the stored numbers (see mesh/quant.ts). */
+  step: number;
+  /** One signed byte per grid point (x changes fastest, then y, then z), as base64 text. */
+  data: string;
+  /** The grid is a mirror image of the shape it was made from (used by mirrored copies). */
+  flipX?: boolean;
+}
+
+/** Empty grid points kept around an imported shape. */
+export const MESH_PAD = 3;
 
 export interface Part {
   id: string;
@@ -57,6 +80,8 @@ export interface Part {
   profile?: SideProfile;
   /** This part is the mirrored copy (across x = 0) of the part with this id. */
   twinOf?: string;
+  /** Only for kind 'import': the opened shape. */
+  mesh?: PartMesh;
 }
 
 export type DabType = 'push' | 'pull' | 'smooth' | 'grab';

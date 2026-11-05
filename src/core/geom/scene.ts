@@ -58,6 +58,7 @@ export function mirrorPart(src: Part, twin: Part): Part {
     squash: src.squash,
     rot: { x: src.rot.x, y: -src.rot.y, z: -src.rot.z },
     profile: src.profile,
+    mesh: src.mesh ? { ...src.mesh, flipX: !src.mesh.flipX } : undefined,
   };
 }
 

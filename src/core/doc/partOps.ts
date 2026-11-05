@@ -3,7 +3,7 @@ import { effectiveParts } from '../geom/scene';
 import { dedupeClose, repairOutline, signedArea } from '../geom/outline';
 import { defaultThickness } from '../geom/shapes';
 import type { Vec2 } from '../geom/vec';
-import type { Doc, Part, PartKind } from './types';
+import type { Doc, Part, PartKind, PartMesh } from './types';
 import { PROFILE_SAMPLES } from './types';
 
 /** Colours new parts take in turn. */
@@ -11,7 +11,7 @@ export const PALETTE = ['#e5484d', '#f76808', '#f5c518', '#46a758', '#12a594', '
 
 const KIND_NAME: Record<PartKind, string> = {
   circle: 'Circle', box: 'Box', star: 'Star', heart: 'Heart', egg: 'Egg', capsule: 'Capsule', triangle: 'Triangle',
-  drop: 'Drop', moon: 'Moon', draw: 'Drawing', limb: 'Limb', eyes: 'Eye', smile: 'Smile',
+  drop: 'Drop', moon: 'Moon', draw: 'Drawing', limb: 'Limb', eyes: 'Eye', smile: 'Smile', import: 'Shape',
 };
 
 export interface NewPartSpec {
@@ -24,6 +24,8 @@ export interface NewPartSpec {
   z?: number;
   round?: number;
   name?: string;
+  /** Only for kind 'import': the shape opened from a file. */
+  mesh?: PartMesh;
 }
 
 /** A new id that no part has had in this document. */
@@ -83,6 +85,7 @@ export function newPart(doc: Doc, spec: NewPartSpec): Part {
     rot: { x: 0, y: 0, z: 0 },
     taper: 0,
     squash: 0,
+    ...(spec.mesh ? { mesh: spec.mesh } : {}),
   };
 }
 

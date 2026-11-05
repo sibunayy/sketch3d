@@ -28,12 +28,14 @@ export function usePartEditing(store: Store) {
 }
 export type PartEditing = ReturnType<typeof usePartEditing>;
 
+const allImported = (parts: readonly { kind: string }[]) => parts.length > 0 && parts.every((p) => p.kind === 'import');
 const show = (v: number | 'mixed', fallback: number) => (v === 'mixed' ? fallback : v);
 const ROUND_NAMES: Record<number, string> = { 0.04: copy.roundSquare, 0.4: copy.roundSoft, 0.8: copy.roundRound, 1: copy.roundPill };
 
 /** How round and how thick. */
 export function ShapeFields({ e }: { e: PartEditing }) {
   const { parts, live, finish, set } = e;
+  if (allImported(parts)) return null; // a shape from a file keeps its own form
   const round = commonValue(parts, (p) => p.round);
   const thick = commonValue(parts, (p) => p.depthMm);
   return (
@@ -64,6 +66,7 @@ export function ShapeFields({ e }: { e: PartEditing }) {
 /** Squash and stretch, and the top thinner or wider. */
 export function StretchFields({ e }: { e: PartEditing }) {
   const { parts, live, finish } = e;
+  if (allImported(parts)) return null;
   const squash = commonValue(parts, (p) => p.squash);
   const taper = commonValue(parts, (p) => p.taper);
   return (

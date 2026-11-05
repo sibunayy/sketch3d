@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { Store, ViewName } from '../app/state';
 import { Segmented } from './components/Segmented';
 import { Button } from './components/Button';
@@ -12,6 +12,7 @@ import { PrintSheet } from './panels/PrintSheet';
 import { FirstRun, shouldShowGuide } from './panels/FirstRun';
 import type { Persistence } from '../app/persist';
 import { copy } from './copy';
+import { addStlFile } from '../app/importStl';
 import { DrawCanvas } from './DrawCanvas';
 import { ThreeView } from './ThreeView';
 import { SHAPE_NAMES, createTool } from '../views2d/tools';
@@ -67,6 +68,7 @@ function Picker({ store }: { store: Store }) {
  */
 export function Shell({ store, persistence }: { store: Store; persistence: Persistence | null }) {
   const view = store.view.value;
+  const stlInput = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toysOpen, setToysOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
@@ -83,6 +85,20 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
         <span class="savestatus" data-status={status} role="status" data-testid="savestatus">
           {status === 'saved' ? copy.saved : status === 'saving' ? copy.saving : copy.notSaved}
         </span>
+        <Button label={copy.btnAddStl} onClick={() => stlInput.current?.click()} />
+        <input
+          ref={stlInput}
+          type="file"
+          accept=".stl,model/stl,application/sla,application/vnd.ms-pki.stl,application/octet-stream"
+          hidden
+          data-testid="stl-input"
+          onChange={(e) => {
+            const input = e.currentTarget;
+            const file = input.files?.[0];
+            input.value = '';
+            if (file) void addStlFile(store, file);
+          }}
+        />
         <Button label={copy.btnHelp} onClick={() => setGuideOpen(true)} />
         {persistence && <Button label={copy.btnMyToys} icon="views" onClick={() => setToysOpen(true)} />}
         {persistence && <Button label={copy.btnSaveFile} icon="save" onClick={() => persistence.saveFile()} />}
