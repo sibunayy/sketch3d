@@ -109,6 +109,7 @@ export class Edit3D implements ViewportInteraction {
       const label = this.drag.kind === 'move' ? 'Move' : this.drag.kind === 'turn' ? 'Turn' : 'Resize';
       this.store.commitPreview(label);
       this.drag = null;
+      this.gizmo.setActive(null);
     } else if (this.stroke) {
       if (this.stroke.added > 0 || this.stroke.grab) this.store.commitPreview(this.stroke.type === 'paint' ? 'Paint' : 'Sculpt');
       this.stroke = null;
@@ -150,6 +151,7 @@ export class Edit3D implements ViewportInteraction {
       this.drag = { kind: 'resize', snap, id, centre2: c2, start2: [e.clientX, e.clientY] };
     }
     this.active = hit.kind;
+    this.gizmo.setActive(hit.kind === 'resize' ? 'resize' : `${hit.kind}:${hit.axis}`);
     return true;
   }
 

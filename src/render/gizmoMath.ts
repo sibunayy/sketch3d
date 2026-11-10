@@ -58,15 +58,20 @@ export function scaleFactor(centre: [number, number], start: [number, number], n
 
 export type HandleHit = { kind: 'move'; axis: Axis } | { kind: 'turn'; axis: Axis } | { kind: 'resize' };
 
-/** How near (in pixels) a finger must be to a handle to take hold of it. Fingers are big. */
-export const HANDLE_REACH_PX = 28;
+/** How near (in pixels) a finger must be to a handle to take hold of it. A child's fingertip on an iPad is about 40 px wide. */
+export const HANDLE_REACH_PX = 44;
+/** An arrow counts as this much closer than it is, so a touch near both an arrow and a ring picks the arrow (moving is the usual job). */
+const ARROW_BIAS = 0.8;
+/** Where an arrow starts and ends, as a share of the gizmo size. A finger is measured against the whole line between them. */
+const ARROW_FROM = 0.3;
+const ARROW_TO = 1;
 const RING_POINTS = 48;
 
 /** Where the three handle families are, so drawing and finger-hit tests agree. */
 export function handlePoints(centre: Vec3, size: number) {
   const arrows = (['x', 'y', 'z'] as Axis[]).map((axis) => ({
     axis,
-    points: [0.45, 0.7, 1].map((t): Vec3 => [centre[0] + AXES[axis][0] * size * t, centre[1] + AXES[axis][1] * size * t, centre[2] + AXES[axis][2] * size * t]),
+    points: [ARROW_FROM, ARROW_TO].map((t): Vec3 => [centre[0] + AXES[axis][0] * size * t, centre[1] + AXES[axis][1] * size * t, centre[2] + AXES[axis][2] * size * t]),
   }));
   const rings = (['x', 'y', 'z'] as Axis[]).map((axis) => {
     const r = size * 0.72;
@@ -83,23 +88,39 @@ export function handlePoints(centre: Vec3, size: number) {
   return { arrows, rings, cube };
 }
 
-/** Which handle a finger at `screen` is on, if any. The cube wins over arrows, and arrows over rings. */
+/** How far point `p` is from the line segment `a`-`b`, in the same units. */
+function segmentDistance(p: [number, number], a: [number, number], b: [number, number]): number {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const len2 = dx * dx + dy * dy;
+  const t = len2 < 1e-9 ? 0 : Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
+/** Which handle a finger at `screen` is on, if any: the nearest one in reach (arrows count as a little nearer than they are, so they win a near tie with a ring). */
 export function hitHandle(cam: OrbitCamera, fovDeg: number, aspect: number, width: number, height: number, centre: Vec3, size: number, screen: [number, number]): HandleHit | null {
   const h = handlePoints(centre, size);
   const near = (p: Vec3) => {
     const s = projectToScreen(cam, fovDeg, aspect, width, height, p);
     return s ? Math.hypot(s[0] - screen[0], s[1] - screen[1]) : Infinity;
   };
-  if (near(h.cube) <= HANDLE_REACH_PX) return { kind: 'resize' };
+  /** Screen distance from the finger to the line through these points (a closed loop if `loop`). */
+  const nearLine = (points: Vec3[], loop: boolean) => {
+    const pts = points.map((p) => projectToScreen(cam, fovDeg, aspect, width, height, p));
+    let d = Infinity;
+    for (let i = 0; i < pts.length - (loop ? 0 : 1); i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      if (a && b) d = Math.min(d, segmentDistance(screen, a, b));
+    }
+    return d;
+  };
+  const candidates: { hit: HandleHit; d: number }[] = [
+    { hit: { kind: 'resize' }, d: near(h.cube) },
+    ...h.arrows.map((a) => ({ hit: { kind: 'move', axis: a.axis } as HandleHit, d: nearLine(a.points, false) * ARROW_BIAS })),
+    ...h.rings.map((r) => ({ hit: { kind: 'turn', axis: r.axis } as HandleHit, d: nearLine(r.points, true) })),
+  ];
   let best: { hit: HandleHit; d: number } | null = null;
-  for (const a of h.arrows) {
-    const d = Math.min(...a.points.map(near));
-    if (d <= HANDLE_REACH_PX && (!best || d < best.d)) best = { hit: { kind: 'move', axis: a.axis }, d };
-  }
-  if (best) return best.hit;
-  for (const r of h.rings) {
-    const d = Math.min(...r.points.map(near));
-    if (d <= HANDLE_REACH_PX && (!best || d < best.d)) best = { hit: { kind: 'turn', axis: r.axis }, d };
-  }
-  return best ? best.hit : null;
+  for (const c of candidates) if (c.d <= HANDLE_REACH_PX && (best === null || c.d < best.d)) best = c;
+  return best === null ? null : best.hit;
 }

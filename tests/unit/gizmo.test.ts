@@ -126,6 +126,29 @@ describe('hitHandle', () => {
     expect(hitHandle(cam, FOV, W / H, W, H, centre, 30, [tip[0] + 300, tip[1]])).toBeNull();
   });
 
+  it('a finger 40 px from an arrow tip still grabs it (iPad fingers are wide)', () => {
+    const tip = project(cam, [30, 28, 0]);
+    expect(hitHandle(cam, FOV, W / H, W, H, centre, 30, [tip[0] + 40, tip[1]])).toMatchObject({ kind: 'move', axis: 'x' });
+  });
+
+  it('anywhere along an arrow grabs it, not only at a few points', () => {
+    for (const t of [0.34, 0.5, 0.64, 0.86]) {
+      const on = project(cam, [0, 28 + 30 * t, 0]);
+      expect(hitHandle(cam, FOV, W / H, W, H, centre, 30, on)).toMatchObject({ kind: 'move', axis: 'y' });
+    }
+  });
+
+  it('a touch on a ring, away from every arrow, turns that ring', () => {
+    const k = 30 * 0.72 * Math.SQRT1_2;
+    const onRing = project(cam, [k, 28, k]); // the y ring, halfway between the x and z arrows
+    expect(hitHandle(cam, FOV, W / H, W, H, centre, 30, onRing)).toMatchObject({ kind: 'turn', axis: 'y' });
+  });
+
+  it('the closer handle wins when two are in reach', () => {
+    const cube = project(cam, [-0.42 * 30, 28 + 0.42 * 30, 0.42 * 30]);
+    expect(hitHandle(cam, FOV, W / H, W, H, centre, 30, cube)).toMatchObject({ kind: 'resize' });
+  });
+
   function project(c: OrbitCamera, p: [number, number, number]): [number, number] {
     // reuse the same projection the gizmo uses
     return projectForTest(c, p);
