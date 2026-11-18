@@ -1,8 +1,7 @@
 name: Deploy
 
-# Publishes the built app to GitHub Pages after every push to main.
-# Do not merge to main until docs/release-checklist.md has been done on real devices:
-# this replaces the live prototype.
+# Publishes the simple prototype (legacy/index.html) to GitHub Pages after every push to main.
+# The rebuilt app is saved on the branch rebuild-main-backup; its source is still in this repo.
 
 on:
   push:
@@ -22,21 +21,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm test
-      - run: npm run build
-      - run: npm run size
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - run: mkdir site && cp legacy/index.html site/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
 
   deploy:
     needs: checks
