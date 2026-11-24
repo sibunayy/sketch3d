@@ -146,15 +146,17 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
       </div>
 
       <div class="switch">
-        <Segmented<'draw' | '3d'>
-          label={copy.labelViews}
-          value={showing3d ? '3d' : 'draw'}
-          options={[
-            { value: 'draw', label: copy.btnDraw },
-            { value: '3d', label: copy.btnSee3d },
-          ]}
-          onChange={(v) => (store.view.value = v === '3d' ? '3d' : 'front')}
-        />
+        <div class="switch-views">
+          <Segmented<'draw' | '3d'>
+            label={copy.labelViews}
+            value={showing3d ? '3d' : 'draw'}
+            options={[
+              { value: 'draw', label: copy.btnDraw },
+              { value: '3d', label: copy.btnSee3d },
+            ]}
+            onChange={(v) => (store.view.value = v === '3d' ? '3d' : 'front')}
+          />
+        </div>
         <Button label={copy.btnEditPart} onClick={() => setSheetOpen(true)} />
       </div>
 
