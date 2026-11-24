@@ -100,8 +100,10 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
 }
-.picker .iconbtn {
+.picker .iconbtn,
+.picker .btn {
   flex: none;
+  white-space: nowrap; /* buttons keep their size and the row scrolls, so labels never squash */
 }
 .three-wrap {
   flex: 1;
@@ -165,8 +167,75 @@
   border-top: 2px solid var(--border);
 }
 
+/* tablets: the drawing and the 3D view both stay on screen, so nobody has to switch between them.
+   Landscape puts them side by side. Portrait puts the drawing on top and the 3D view under it. */
+@media (min-width: 700px) {
+  .pane,
+  .pane[data-active] {
+    display: flex;
+    flex-direction: column;
+  }
+  .switch-views {
+    display: none;
+  }
+  .switch {
+    justify-content: flex-end;
+  }
+  .pane-bar {
+    height: 64px;
+  }
+}
+@media (min-width: 700px) and (orientation: landscape) {
+  .app {
+    grid-template-columns: 104px 1fr;
+    grid-template-areas: 'top top' 'rail stage' 'rail switch';
+    grid-template-rows: auto 1fr auto;
+  }
+  .rail {
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-bottom: 0;
+    border-right: 2px solid var(--border);
+  }
+  .stage {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pane-3d {
+    border-left: 2px solid var(--border);
+  }
+}
+@media (min-width: 700px) and (orientation: portrait) {
+  .stage {
+    grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+  .pane-draw {
+    grid-area: 1 / 1;
+  }
+  .pane-3d {
+    grid-area: 2 / 1;
+    border-top: 2px solid var(--border);
+  }
+  /* Undo and Redo stay over the drawing (the top half), not at the bottom of the whole stage */
+  .history {
+    position: static;
+    grid-row: 1;
+    grid-column: 1;
+    align-self: end;
+    justify-self: start;
+    margin: 0 0 var(--s3) var(--s3);
+  }
+  /* the 3D tip does not need room for Undo, so it can be a single line */
+  .pane-3d .toolhint {
+    height: var(--target);
+  }
+}
+
 /* wide landscape: everything side by side */
 @media (min-width: 1100px) and (min-height: 600px) and (orientation: landscape) {
+  .pane-bar {
+    height: 80px; /* as before the tablet layout, so the wide screen does not change */
+  }
   .app {
     grid-template-rows: auto 1fr auto;
     grid-template-columns: 104px 1fr;
@@ -542,6 +611,7 @@
   padding: var(--s2) var(--s1);
 }
 .ctx-options .segmented button {
+  flex: none; /* each button is as wide as its words, not as wide as the widest one */
   padding: 0 var(--s3);
   white-space: nowrap;
 }
@@ -564,4 +634,44 @@
 .ctx-options .hint {
   margin: 0;
   align-self: center;
+}
+
+/* ---------- top bar: Add an STL file and Help move into "More" on smaller screens ---------- */
+.topbar-extra {
+  display: contents; /* the two buttons sit in the bar like any other */
+}
+.topbar-more {
+  display: none;
+}
+@media (max-width: 1199px) {
+  .topbar-extra {
+    display: none;
+  }
+  .topbar-more {
+    display: block;
+  }
+  .topbar {
+    gap: var(--s2);
+  }
+}
+
+/* ---------- rows that scroll sideways fade where there is more to see ---------- */
+.picker,
+.rail,
+.ctx-options {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+}
+[data-fade-start='true'] {
+  --fade-start: 40px;
+}
+[data-fade-end='true'] {
+  --fade-end: 40px;
+}
+
+/* a settings group keeps the width of its buttons, so none is cut off. The row scrolls instead. */
+.ctx-options .field {
+  flex: none;
 }

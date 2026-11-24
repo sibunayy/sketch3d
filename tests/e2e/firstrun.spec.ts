@@ -40,6 +40,9 @@ test('the Help button shows the guide again', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('sketch3d.guide.done', '1'));
   await page.goto('/');
   await expect(page.getByRole('dialog', { name: 'How to make a toy' })).toHaveCount(0);
+  // on smaller screens Help sits behind the See more button
+  const more = page.getByRole('button', { name: 'See more', exact: true });
+  if (await more.isVisible()) await more.click();
   await page.getByRole('button', { name: 'Help' }).click();
   await expect(page.getByRole('dialog', { name: 'How to make a toy' })).toBeVisible();
 });
