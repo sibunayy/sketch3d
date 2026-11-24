@@ -233,6 +233,9 @@
 
 /* wide landscape: everything side by side */
 @media (min-width: 1100px) and (min-height: 600px) and (orientation: landscape) {
+  .pane-bar {
+    height: 80px; /* as before the tablet layout, so the wide screen does not change */
+  }
   .app {
     grid-template-rows: auto 1fr auto;
     grid-template-columns: 104px 1fr;
