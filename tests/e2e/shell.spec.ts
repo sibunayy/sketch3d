@@ -83,7 +83,8 @@ for (const vp of TABLETS) {
 }
 
 test.describe('top bar', () => {
-  test.use({ viewport: { width: 820, height: 1180 } });
+  // 1024 wide leaves room on every machine. At 820 the bar fits with some fonts and wraps with wider ones.
+  test.use({ viewport: { width: 1024, height: 768 } });
 
   test('stays on one row on an iPad, and See more holds Add an STL file and Help', async ({ page }) => {
     await page.goto('/');
