@@ -82,6 +82,59 @@ for (const vp of TABLETS) {
   });
 }
 
+test.describe('top bar', () => {
+  test.use({ viewport: { width: 820, height: 1180 } });
+
+  test('stays on one row on an iPad, and See more holds Add an STL file and Help', async ({ page }) => {
+    await page.goto('/');
+    const bar = (await page.locator('.topbar').boundingBox())!;
+    expect(bar.height).toBeLessThan(90); // one row, not two
+    await expect(page.getByRole('button', { name: 'Add an STL file' })).toBeHidden();
+    await page.getByRole('button', { name: 'See more', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Add an STL file' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.getByRole('button', { name: 'Help' })).toBeHidden();
+  });
+});
+
+test('wide screens keep Add an STL file and Help in the top bar, with no See more button', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Add an STL file' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Help' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'See more', exact: true })).toBeHidden();
+});
+
+test('a row of buttons that scrolls sideways fades at the edge that has more, and a row that fits does not', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.goto('/');
+  const row = page.locator('.pane-3d .picker');
+  await expect(row).toHaveAttribute('data-fade-end', 'true'); // the 3D view buttons do not all fit
+  await expect(row).toHaveAttribute('data-fade-start', 'false');
+  await row.evaluate((el) => (el.scrollLeft = el.scrollWidth));
+  await expect(row).toHaveAttribute('data-fade-end', 'false');
+  await expect(row).toHaveAttribute('data-fade-start', 'true');
+
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await expect(row).toHaveAttribute('data-fade-end', 'false'); // wide enough now
+});
+
+test('the shape group in the settings bar shows all its choices, none cut off', async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.goto('/');
+  const b = (await page.getByTestId('canvas-front').boundingBox())!;
+  await page.getByTestId('tool-shape:circle').click();
+  await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+  const group = page.getByRole('group', { name: 'How round?' });
+  await expect(group).toBeVisible();
+  const clipped = await group.evaluate((el) => [...el.querySelectorAll('button')].filter((x) => x.scrollWidth > x.clientWidth + 1).length);
+  expect(clipped).toBe(0);
+  const box = (await group.boundingBox())!;
+  const widest = await group.evaluate((el) => [...el.querySelectorAll('button')].reduce((n, x) => n + x.scrollWidth, 0));
+  expect(box.width).toBeGreaterThanOrEqual(widest);
+});
+
 test('wide screens show the drawing and the 3D view together, phones one at a time', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');

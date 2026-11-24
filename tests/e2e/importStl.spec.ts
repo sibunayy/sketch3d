@@ -16,6 +16,9 @@ for (const vp of [{ width: 820, height: 1180 }, { width: 1280, height: 650 }]) {
 
     test('the Add an STL file button is big enough and fully on screen', async ({ page }) => {
       await page.goto('/');
+      // on smaller screens the button sits behind See more
+      const more = page.getByRole('button', { name: 'See more', exact: true });
+      if (await more.isVisible()) await more.click();
       const box = (await page.getByRole('button', { name: 'Add an STL file' }).boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(48);
       expect(box.x).toBeGreaterThanOrEqual(0);

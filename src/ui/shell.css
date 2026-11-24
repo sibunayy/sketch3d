@@ -611,6 +611,7 @@
   padding: var(--s2) var(--s1);
 }
 .ctx-options .segmented button {
+  flex: none; /* each button is as wide as its words, not as wide as the widest one */
   padding: 0 var(--s3);
   white-space: nowrap;
 }
@@ -633,4 +634,44 @@
 .ctx-options .hint {
   margin: 0;
   align-self: center;
+}
+
+/* ---------- top bar: Add an STL file and Help move into "More" on smaller screens ---------- */
+.topbar-extra {
+  display: contents; /* the two buttons sit in the bar like any other */
+}
+.topbar-more {
+  display: none;
+}
+@media (max-width: 1199px) {
+  .topbar-extra {
+    display: none;
+  }
+  .topbar-more {
+    display: block;
+  }
+  .topbar {
+    gap: var(--s2);
+  }
+}
+
+/* ---------- rows that scroll sideways fade where there is more to see ---------- */
+.picker,
+.rail,
+.ctx-options {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+}
+[data-fade-start='true'] {
+  --fade-start: 40px;
+}
+[data-fade-end='true'] {
+  --fade-end: 40px;
+}
+
+/* a settings group keeps the width of its buttons, so none is cut off. The row scrolls instead. */
+.ctx-options .field {
+  flex: none;
 }

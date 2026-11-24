@@ -193,6 +193,7 @@ export const copy = {
   btnSkip: 'Skip',
   btnStartMaking: 'Start making',
   btnHelp: 'Help',
+  btnMore: 'See more',
 
   // ready-made toys
   panelPresets: 'Ready-made toys',

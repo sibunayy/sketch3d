@@ -1,4 +1,5 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { watchScrollFade } from './scrollFade';
 import type { Store, ViewName } from '../app/state';
 import { Segmented } from './components/Segmented';
 import { Button } from './components/Button';
@@ -70,6 +71,8 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
   const view = store.view.value;
   const stlInput = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => watchScrollFade(), []);
   const [toysOpen, setToysOpen] = useState(false);
   const [printOpen, setPrintOpen] = useState(false);
   const [guideOpen, setGuideOpen] = useState(shouldShowGuide);
@@ -85,7 +88,13 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
         <span class="savestatus" data-status={status} role="status" data-testid="savestatus">
           {status === 'saved' ? copy.saved : status === 'saving' ? copy.saving : copy.notSaved}
         </span>
-        <Button label={copy.btnAddStl} onClick={() => stlInput.current?.click()} />
+        <div class="topbar-extra">
+          <Button label={copy.btnAddStl} onClick={() => stlInput.current?.click()} />
+          <Button label={copy.btnHelp} onClick={() => setGuideOpen(true)} />
+        </div>
+        <div class="topbar-more">
+          <Button label={copy.btnMore} onClick={() => setMoreOpen(true)} />
+        </div>
         <input
           ref={stlInput}
           type="file"
@@ -99,7 +108,6 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
             if (file) void addStlFile(store, file);
           }}
         />
-        <Button label={copy.btnHelp} onClick={() => setGuideOpen(true)} />
         {persistence && <Button label={copy.btnMyToys} icon="views" onClick={() => setToysOpen(true)} />}
         {persistence && <Button label={copy.btnSaveFile} icon="save" onClick={() => persistence.saveFile()} />}
         <Button label={copy.btnSaveToPrint} icon="savebig" variant="primary" onClick={() => setPrintOpen(true)} />
@@ -162,6 +170,25 @@ export function Shell({ store, persistence }: { store: Store; persistence: Persi
 
       <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)}>
         <Inspector store={store} />
+      </Sheet>
+
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)}>
+        <div class="row">
+          <Button
+            label={copy.btnAddStl}
+            onClick={() => {
+              setMoreOpen(false);
+              stlInput.current?.click(); // still inside the tap, so the browser allows the file picker
+            }}
+          />
+          <Button
+            label={copy.btnHelp}
+            onClick={() => {
+              setMoreOpen(false);
+              setGuideOpen(true);
+            }}
+          />
+        </div>
       </Sheet>
 
       {printOpen && <PrintSheet store={store} onClose={() => setPrintOpen(false)} />}
